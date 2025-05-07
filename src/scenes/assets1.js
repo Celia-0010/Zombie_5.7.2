@@ -156,14 +156,14 @@ export default {
             frameHeight: 32
             }]
         },
-        nimation222: {
+        Animation222: {
             key: 'Animation2',
             args: ['assets/level2/Animation2.png', {
             frameWidth: 32,
             frameHeight: 32
             }]
         },
-        nimation333: {
+        Animation333: {
             key: 'Animation3',
             args: ['assets/level2/Animation3.png', {
             frameWidth: 32,
@@ -190,94 +190,7 @@ export default {
             frameWidth: 32,
             frameHeight: 32
             }]
-        },
-
-
-        liubeiguangmingcheng: {
-            key: '6\u500d\u5149\u660e\u57ce',
-            args: ['assets/level3/6倍光明城.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        sanbeiguangmingcheng: {
-            key: '3\u500d\u5149\u660e\u57ce',
-            args: ['assets/level3/3倍光明城.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        guangmingcheng_jianzhu: {
-            key: '\u5149\u660e\u57ce\u5efa\u7b51',
-            args: ['assets/level3/光明城建筑.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        room_sucai_A4: {
-            key: 'A4',
-            args: ['assets/level3/A4.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        feixujianzhu: {
-            key: '\u5e9f\u589f\u5efa\u7b51',
-            args: ['assets/level3/废墟建筑.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        hkpaizi: {
-            key: 'HK\u724c\u5b50',
-            args: ['assets/level3/HK牌子.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        anhk: {
-            key: '\u6697\u9ed1hk',
-            args: ['assets/level3/暗黑hk.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        anhk2: {
-            key: '\u6697\u9ed1hk2',
-            args: ['assets/level3/暗黑hk2.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        room_sucai_Inside_C: {
-            key: 'Inside_C',
-            args: ['assets/level3/Inside_C.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        clinic_paizi: {
-            key: 'clinic_paizi',
-            args: ['assets/level3/clinic_paizi.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        round1_711: {
-            key: '711room',
-            args: ['assets/indoor/711room.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-        round2_hopspital: {
-            key: 'round2_hospital',
-            args: ['assets/indoor/711room.png', {
-                frameWidth: 32,
-                frameHeight: 32
-            }]
-        },
-
+        }
 
     },
 
@@ -317,14 +230,13 @@ export default {
         }]
         },
 
-        tiles:{
-            key:'tiles',
-            args: ['assets/ui/coins.png', {
-                frameWidth: 140,
-                frameHeight: 140
-        }]
+        tiles: {
+            key: 'tiles',
+            args: ['assets/round2_hospital.png', {
+                frameWidth: 40,
+                frameHeight: 20
+            }]
         },
-        
     },
     
     'tilemapTiledJSON': {
@@ -332,21 +244,17 @@ export default {
             key: 'level1-map', // 第一个关卡的tilemap
             args: ['assets/level1/zombie_round1_1.json']
         },
+        indoor: {
+            key: 'indoor-map', // 室内地图
+            args: ['assets/round2HospitalNew.json'] // 确保路径正确
+        },
         level2: {
             key: 'level2-map', // 第二个关卡的tilemap
             args:  ['assets/level2/zombie_round2.json']
         },
         level3: {
             key: 'level3-map', // 第三个关卡的tilemap
-            args: ['assets/level3/zombie_round3.json']
-        },
-        indoor1: {
-            key: 'indoor1-map', // 室内地图
-            args: ['assets/indoor/round1_711.json'] // 确保路径正确
-        },
-        indoor2: {
-            key: 'indoor2-map', // 室内地图
-            args: ['assets/indoor/round2_hospital.json'] // 确保路径正确
+            args: ['assets/level3_tilemap.json']
         },
     },
 }

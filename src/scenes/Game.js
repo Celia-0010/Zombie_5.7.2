@@ -311,9 +311,6 @@ export class Game extends Phaser.Scene
         this.time.delayedCall(1500, () => msg.destroy());
         }
     }
-
-    // 刷新一下按钮的高亮状态
-    this.updateVehicleUI();
     }
 
 
@@ -334,7 +331,7 @@ export class Game extends Phaser.Scene
     } 
 
    /** 弹窗：询问是否进入房间，点击后切换到 RoomScene **/
-    showRoomEnterPopup() {
+    showRoomEnterPopup (door) {
         const W = this.scale.width, H = this.scale.height;
         this.popupElems = [];  // 新增：存放所有弹窗元素
                 // 先把“对话框底板”放这层
@@ -370,13 +367,18 @@ export class Game extends Phaser.Scene
         this.popupElems.push(txt);
         this.popupElems.push(yes);
         this.popupElems.push(no);
-
+        
         yes.once('pointerdown', () => {
-            this.popupElems.forEach(o => o.destroy());
+            this.popupElems.forEach(o=>o.destroy());
             this.popupElems = null;
+
+            // 隐藏主场景
             this.scene.pause('Game');
             this.scene.setVisible(false, 'Game');
-            this.scene.launch('RoomScene', { gameScene: this });
+
+            // door 是函数参数，里面挂了 roomType / targetScene 等信息
+            const roomType = door.roomType || 'default';     // ← 你的门上写的是 door.roomType
+            this.scene.launch('RoomScene', { gameScene: this, roomType });
         });
 
 
@@ -606,6 +608,15 @@ export class Game extends Phaser.Scene
             if (!this.blockLayerList) this.blockLayerList = [];
             this.blockLayerList.push(layer);
         }  // ← 结束 building/sidebuilding 的 if
+
+        const door711 = new Door(this, 448, 416);
+        door711.roomType = 'indoor1-map';            // 写入房间类型
+        this.doorGroup.add(door711);
+
+        // 第 2 扇门：Hospital，地图格子 (6,5)
+        const doorHos = new Door(this, 200, 150);
+        doorHos.roomType = 'indoor2-map';
+        this.doorGroup.add(doorHos);
 
         // “光标”层 → Door 逻辑
         if (name === '\u5149\u6807') {

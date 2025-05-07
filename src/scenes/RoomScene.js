@@ -11,8 +11,23 @@ export class RoomScene extends Phaser.Scene {
     init(data) {
         // data.gameScene 就是我们刚才从 GameScene 传过来的实例
         this.gameScene = data.gameScene;
+        this.roomType = data.roomType || 'default'; // 接收房间类型
     }
     create() {
+                // 根据房间类型设置不同配置
+        switch(this.roomType) {
+            case 'medical':
+                this.initMedicalRoom();
+                break;
+            case 'Restaurant':
+                this.initRestaurant();
+                break;
+            case 'GasStation':
+                this.initGasStation();
+                break;
+            default:
+                this.initDefault();
+        }
         this.initVariables();
         this.initAnimations();
         this.initInput();
@@ -23,11 +38,6 @@ export class RoomScene extends Phaser.Scene {
         this.initPhysics();
         this.initCamera();
         this.initGameUi();
-        this.supplyTypes = [
-            { name: '修理包',   stat: 'health', delta: +20 },
-            { name: '食物补给', stat: 'hunger', delta: +20 },
-            { name: '燃料补给', stat: 'fuel',   delta: +20 }
-            ];
         this.spawnZombies();
         this.spawnSupplies();
 
@@ -74,6 +84,34 @@ export class RoomScene extends Phaser.Scene {
         this.levelLayer;
     }
 
+    initMedicalRoom() {
+        // 医疗室特有设置
+        this.mapKey = ASSETS.tilemapTiledJSON.indoor2.key
+        this.supplyTypes = [
+            { name: 'A doctor takes care of you, restoring 30 health and reducing hunger by 10.', stat: 'health', delta: +20 },
+            { name: 'The hospital is out of supplies, and you can’t find proper treatment, losing 10 health.', stat: 'health', delta: -10 },
+            { name: 'You find a discarded car at the hospital, gaining 15 fuel.', stat: 'fuel', delta: +15 }
+        ];
+        // 可以添加医疗室特有逻辑
+    }
+    
+    initRestaurant() {
+        // 厨房特有设置
+        this.mapKey = ASSETS.tilemapTiledJSON.indoor1.key;
+        this.supplyTypes = [
+            { name: 'You find a hearty meal at the restaurant, restoring 10 health and reducing hunger by 15.', stat: 'hunger', delta: +15 },
+            { name: 'The kitchen has issues, and you accidentally eat unhygienic food, losing 10 health.', stat: 'health', delta: -10 }
+        ];
+    }
+
+    initGasStation() {
+        this.mapKey = 'indoor1-map';
+        this.supplyTypes = [
+            { name: 'You find fuel at the gas station, increasing fuel by 30.', stat: 'fuel', delta: +30},
+            { name: 'The fuel pump at the gas station is broken, and you only get half the fuel, gaining 10 fuel and losing 5 gold.', stat: 'fuel', delta: +10}
+        ]
+    }
+
     initAnimations() {
         // 如果室内场景有特定动画，在这里添加
         // 目前先保留空，可参考 Game 场景的 initAnimations 方法添加
@@ -96,38 +134,42 @@ export class RoomScene extends Phaser.Scene {
         });
     }
 
-    initMap() {
-        // 加载室内地图
-        this.map = this.make.tilemap({ key: ASSETS.tilemapTiledJSON.indoor.key });
-        this.map.setCollision(this.tileIds.walls);
-        const tileset = this.map.addTilesetImage(ASSETS.spritesheet.tiles.key);
+   initMap () {
 
-        // 创建背景层（地面层）
-        this.groundLayer = this.map.createLayer('ground', tileset, this.mapX, this.mapY);
-        if (!this.groundLayer) {
-            this.groundLayer = this.map.createBlankLayer('ground', tileset, this.mapX, this.mapY);
-            this.groundLayer.fill(0, 0, 0, this.mapWidth, this.mapHeight);
-        }
+    /* ---- 1. 创建 tilemap ---- */
+    this.map = this.make.tilemap({ key: this.mapKey });
 
-        // 创建关卡层
-        this.levelLayer = this.map.createLayer('level', tileset, this.mapX, this.mapY);
+    /* ---- 2. 依据 tilemap 动态设置尺寸与偏移 ---- */
+    this.mapWidth  = this.map.width;     // tile 数
+    this.mapHeight = this.map.height;
+    this.mapX = this.centreX - (this.mapWidth  * this.tileSize * 0.5);
+    this.mapY = this.centreY - (this.mapHeight * this.tileSize * 0.5);
 
-        // 填充关卡元素（如果有除墙壁和门以外的元素，可仿照 Game 场景添加逻辑）
-        for (let y = 0; y < this.mapHeight; y++) {
-            for (let x = 0; x < this.mapWidth; x++) {
-                const tile = this.levelLayer.getTileAt(x, y);
-                if (!tile) continue;
+    /* ---- 3. 自动加载第一张 tileset ---- */
+    const ts = this.map.tilesets[0];
+    const tileset = this.map.addTilesetImage(ts.name, ts.name);
 
-                if (tile.index === this.tileIds.player) {
-                    tile.index = -1;
-                    // 可以在这里设置玩家起始位置的逻辑
-                } else if (tile.index === this.tileIds.door) {
-                    tile.index = -1;
-                    // 如果有门的相关操作，可在这里添加代码
-                }
+    /* ---- 4. 创建图层（JSON 里实际叫 Other / Wall / bianyuan） ---- */
+    this.groundLayer = this.map.createLayer('Other',    tileset, this.mapX, this.mapY);
+    this.wallLayer   = this.map.createLayer('Wall',     tileset, this.mapX, this.mapY);
+    this.borderLayer = this.map.createLayer('bianyuan', tileset, this.mapX, this.mapY);
+
+
+    /* ---- 6. 用墙层遍历，替代原 levelLayer ---- */
+    for (let y = 0; y < this.mapHeight; y++) {
+        for (let x = 0; x < this.mapWidth; x++) {
+            const tile = this.wallLayer.getTileAt(x, y);
+            if (!tile) continue;
+
+            if (tile.index === this.tileIds.player) {
+                tile.index = -1;           // 玩家起点，如需可记录
+            } else if (tile.index === this.tileIds.door) {
+                tile.index = -1;           // 门格子，如需可在此生成 Door
             }
         }
     }
+}
+
 
     initPlayer() {
         const startX = 4;
@@ -163,6 +205,13 @@ export class RoomScene extends Phaser.Scene {
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     }
 
+    initDefault () {
+    this.mapKey = ASSETS.tilemapTiledJSON.indoor1.key; // 默认室内地图
+    this.supplyTypes = [
+        { name:'随机物资', stat:'fuel', delta:+15 }
+    ];
+    }
+
     initGameUi() {
         // 获取摄像头视图中心坐标
         const zoomFactor = this.cameras.main.zoom;
@@ -183,6 +232,14 @@ export class RoomScene extends Phaser.Scene {
             .setScrollFactor(0)
             .setDepth(100);
               // 心形
+              this.add.image(
+                W / 2,
+                H / 2 + 135,
+                'hp'
+            )
+            .setScrollFactor(0)
+            .setDepth(90)          // 要低于心形(100) 高于地图
+            .setDisplaySize(350, 140);
             this.heartGroups[stat] = [];
                 for (let j = 0; j < 10; j++) {
                     const img = this.add.image(
@@ -287,10 +344,15 @@ export class RoomScene extends Phaser.Scene {
             tileSize: this.tileSize
         };
     }
+    getTileAt (worldX, worldY)
+{   
+    if (!this.wallLayer) return -1;      // 保险
 
-    getTileAt(x, y) 
-    {
-        const tile = this.levelLayer.getTileAtWorldXY(x, y, true);
-        return tile ? this.tileIds.walls.indexOf(tile.index) : -1;
-    }
+    // false 表示若取不到 tile 则返回 null 而不创建
+    const tile = this.wallLayer.getTileAtWorldXY(worldX, worldY, false);
+
+    // 无瓦片视为可走通道，用 -1 与 Enemy 原逻辑保持一致
+    return tile ? tile.index : -1;
+}
+
 }
