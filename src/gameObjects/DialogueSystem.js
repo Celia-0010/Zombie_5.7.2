@@ -1,3 +1,5 @@
+import ASSETS from '../assets.js';
+
 export default class DialogueSystem {
     constructor(scene, npc) {
         this.scene = scene;
@@ -96,9 +98,10 @@ export default class DialogueSystem {
 
     createControlButtons() {
         // 发送按钮
-        const sendButton = this.scene.add.rectangle(220, 120, 60, 30, 0x4CAF50)
-            .setOrigin(0.5)
-            .setInteractive();
+        const sendButton = this.scene.add.image(220, 120, 'button')
+    .setOrigin(0.5)
+    .setInteractive()
+    .setDisplaySize(100, 60); // 设置按钮大小
         this.dialogueBox.add(sendButton);
 
         const sendText = this.scene.add.text(220, 120, 'Send', {
@@ -131,31 +134,42 @@ export default class DialogueSystem {
     }
 
     // 创建帮助和取消按钮
-    createButtons() {
-        const helpButton = this.scene.add.text(-160, 80, 'Help', {
-            fontFamily: 'Arial',
-            fontSize: '20px',
-            color: '#00ff00',
-            backgroundColor: '#000000',
-        }).setOrigin(0.5).setInteractive().setDepth(101);
-        this.dialogueBox.add(helpButton);
+createButtons() {
+    // Help button
+    const helpButton = this.scene.add.image(-180, 80, 'button') // Using 'button' key for help button
+        .setOrigin(0.5)
+        .setInteractive()
+        .setDisplaySize(80, 40);
+    this.dialogueBox.add(helpButton);
 
-        helpButton.on('pointerdown', () => {
-            this.handleHelp();
-        });
+    const helpText = this.scene.add.text(-180, 80, 'Help', {
+        font: '18px Arial',
+        fill: '#ffffff'
+    }).setOrigin(0.5);
+    this.dialogueBox.add(helpText);
 
-        const cancelButton = this.scene.add.text(-100, 80, 'Reject', {
-            fontFamily: 'Arial',
-            fontSize: '20px',
-            color: '#ff0000',
-            backgroundColor: '#000000',
-        }).setOrigin(0.5).setInteractive().setDepth(101);
-        this.dialogueBox.add(cancelButton);
+    helpButton.on('pointerdown', () => {
+        this.handleHelp();
+    });
 
-        cancelButton.on('pointerdown', () => {
-            this.handleCancel();
-        });
-    }
+    // Reject button
+    const cancelButton = this.scene.add.image(-100, 80, 'button') // Using 'button' key for reject button
+        .setOrigin(0.5)
+        .setInteractive()
+        .setDisplaySize(80, 40);
+    this.dialogueBox.add(cancelButton);
+
+    const cancelText = this.scene.add.text(-100, 80, 'Reject', {
+        font: '18px Arial',
+        fill: '#ffffff'
+    }).setOrigin(0.5);
+    this.dialogueBox.add(cancelText);
+
+    cancelButton.on('pointerdown', () => {
+        this.handleCancel();
+    });
+}
+
 
     // 处理“帮助”按钮的点击
     handleHelp() {

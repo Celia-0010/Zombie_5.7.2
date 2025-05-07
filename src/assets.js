@@ -4,6 +4,30 @@ export default {
             key: 'reject-sound',
             args: ['assets/sound/cry.mp3']
         },
+        engineon:{
+            key: 'engineon',
+            args: ['assets/sound/engineOn.mp3']
+        },
+        shutter:{
+            key: 'engineon',
+            args: ['assets/sound/shutter.wav']
+        },
+        attack:{
+            key: 'attack',
+            args: ['assets/sound/kidzombie.wav']
+        },
+        bgm:{
+            key: 'bgm',
+            args: ['assets/sound/Untitled.mp3']
+        },
+        street: {
+            key: 'street',
+            args: ['assets/sound/street.wav']
+        },
+        shutter: {
+            key: 'shutter',
+            args: ['assets/sound/shutter.wav']
+        },
     },
     // 'image': {
     //     spikes: {
@@ -272,7 +296,7 @@ export default {
         },
         round2_hopspital: {
             key: 'round2_hospital',
-            args: ['assets/indoor/711room.png', {
+            args: ['assets/indoor/round2_hospital.png', {
                 frameWidth: 32,
                 frameHeight: 32
             }]

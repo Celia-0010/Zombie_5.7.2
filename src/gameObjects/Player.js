@@ -79,8 +79,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite
         // 只要累计距离≥一个格子，就扣一次属性、并减掉 tileSize
         const tileSize = this.mapOffset.tileSize;
         while (this.distanceAccumulator >= tileSize) {
-          this.adjustStat('hunger', -1);
-          this.adjustStat('fuel',   -1);
+          this.adjustStat('hunger', -0.2);
+          this.adjustStat('fuel',   -0.2);
           this.distanceAccumulator -= tileSize;
         }
       }
@@ -96,6 +96,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite
   }
     // 切换为人物模式
   enterCharacterMode() {
+      this.scene.sound.play('street');
       this.inVehicle = false;
       this.setTexture(ASSETS.spritesheet.characters.key );
       const snappedX = Math.round((this.x - this.mapOffset.x) / this.mapOffset.tileSize) * this.mapOffset.tileSize + this.mapOffset.x;
@@ -107,6 +108,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite
 
   // 切换为房车模式
   enterVehicleMode() {
+      this.scene.sound.play('engineon');
+      this.scene.sound.play('bgm');
       this.inVehicle = true;
       this.setTexture(ASSETS.spritesheet.vehicle.key); // 房车贴图 frame
       const snappedX = Math.round((this.x - this.mapOffset.x) / this.mapOffset.tileSize) * this.mapOffset.tileSize + this.mapOffset.x;
@@ -127,6 +130,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite
 
     // —— 只有下车后才掉血 —— 
     this.adjustStat('health', -10);
+    this.scene.sound.play('attack');
     if (this.health <= 0) {
       // this.scene 是 RoomScene，我们要调用真正的 GameScene
       this.scene.gameScene.GameOver();  

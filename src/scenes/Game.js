@@ -191,11 +191,11 @@ export class Game extends Phaser.Scene
 
 
         this.randomEvents = [
-            { text: '遭遇丧尸袭击，生命 -20',   effect: { health: -20 } },
-            { text: '遇到好心幸存者，生命 +10', effect: { health: +10 } },
-            { text: '遇到坏人袭击，生命 -10',   effect: { health: -10 } },
-            { text: '发现食物补给，饥饿 +20',   effect: { hunger: +20 } },
-            { text: '发现燃料补给，燃料 +20',   effect: { fuel:   +20 } }
+            { text: 'Attacked by zombies, Health -20',        effect: { health: -20 } },
+            { text: 'Met a kind survivor, Health +10',        effect: { health: +10 } },
+            { text: 'Ambushed by raiders, Health -10',        effect: { health: -10 } },
+            { text: 'Found food supplies, Hunger +20',        effect: { hunger: +20 } },
+            { text: 'Found fuel supplies, Fuel +20',          effect: { fuel:   +20 } }
         ];
         // —— 把每次事件的变动都记录下来 —— 
         this.eventHistory = [];
@@ -274,6 +274,10 @@ export class Game extends Phaser.Scene
                 this.heartGroups[stat].push(img);
             }
         });
+
+
+
+        
         this.refreshHearts();
     }
 
@@ -383,9 +387,13 @@ export class Game extends Phaser.Scene
 
 
         no.once('pointerdown', () => {
-            this.popupElems.forEach(o => o.destroy());
-            this.popupElems = null;
-            // 此处不用切换场景，直接让弹窗消失，游戏继续；
+            // 先判断是否存在
+            if (this.popupElems) {
+                this.popupElems.forEach(o => o.destroy());
+                this.popupElems = null;
+            }
+            // 让门可以再次触发
+            door.prompted = false;
         });
     }
 
@@ -403,6 +411,14 @@ export class Game extends Phaser.Scene
             this.player.eventHistory.push({ stat, delta, ts: Date.now() });
         });
 
+        this.add.image(
+                W / 2,    // 居中显示，你也可以改成 W/2 - 100 等靠左
+                H / 2+135,        // 垂直对齐到心形所在行
+                'tips' // 你 preload 里给它的 key
+                )
+                .setScrollFactor(0) // 固定在屏幕上
+                .setDepth(90)    // 深度要比文字和心形(100)低
+                .setDisplaySize(350, 140);
         const msg = this.add.text(
             this.scale.width/2,
             this.scale.height/2,
@@ -609,13 +625,13 @@ export class Game extends Phaser.Scene
             this.blockLayerList.push(layer);
         }  // ← 结束 building/sidebuilding 的 if
 
-        const door711 = new Door(this, 448, 416);
-        door711.roomType = 'indoor1-map';            // 写入房间类型
+        const door711 = new Door(this, 14, 13);
+        door711.roomType = 'indoor1';            // 写入房间类型
         this.doorGroup.add(door711);
 
         // 第 2 扇门：Hospital，地图格子 (6,5)
-        const doorHos = new Door(this, 200, 150);
-        doorHos.roomType = 'indoor2-map';
+        const doorHos = new Door(this, 33, 13);
+        doorHos.roomType = 'indoor2';
         this.doorGroup.add(doorHos);
 
         // “光标”层 → Door 逻辑
@@ -757,7 +773,7 @@ export class Game extends Phaser.Scene
     }
 
 
-  GameOver(isWin = false) {
+      GameOver(isWin = false) {
         this.gameStarted = false;
         
         if (isWin) {
@@ -767,29 +783,29 @@ export class Game extends Phaser.Scene
             let endingColor = '#FFFFFF';
             
             if (totalHelped >= 3) {
-                endingText = '完美结局：你拯救了所有需要帮助的人！';
+                endingText = 'You saved all people!';
                 endingColor = '#FFD700'; // 金色
             } else if (totalHelped >= 1) {
-                endingText = '好结局：你帮助了一些人逃出生天';
+                endingText = 'The RV stalls at an abandoned airstrip, fuel exhausted.\nAs the undead horde fades behind you, hope turns to dread: Hannibal awaits in the back, cleaning a bone-handled knife under his bloodied apron. "The pharmacist’s liver complemented black garlic... like the investigator’s,"\n he muses innocently.The blade mirrors your terror as wet chewing echoes in the dark.';
                 endingColor = '#00FF00'; // 绿色
             } else {
-                endingText = 'Bad Ending: You helped two strangers,\nbut Dr.Wen is killed by Chef Hannibal...';
+                endingText = 'Normal Ending: You escape, one and alone...';
                 endingColor = '#FFFFFF'; // 白色
             }
             
             // 显示统计信息
             const statsText = `Survival: ${totalHelped}\nKindness: ${this.player.reputation}`;
             
-            // 创建胜利文本
-            this.gameOverText.setText([
-                '到达终点',
-                '',
-                endingText,
-                '',
-                statsText
-            ])
-            .setColor(endingColor)
-            .setFontSize(18);
+            this.gameOverText
+                .setFont('Zombie')      // ★ 统一设置字体
+                .setText([
+                    '',
+                    endingText,
+                    '',
+                    statsText
+                ])
+                .setColor(endingColor)
+                .setFontSize(20);
             
         } else {
             this.gameOverText.setText('Game Over')
@@ -798,5 +814,4 @@ export class Game extends Phaser.Scene
         
         this.gameOverText.setVisible(true);
     }
-
 }

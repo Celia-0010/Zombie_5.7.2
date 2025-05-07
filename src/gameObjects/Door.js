@@ -16,8 +16,9 @@ export default class Door extends Phaser.GameObjects.Zone {
     this.body.setAllowGravity(false);
     // （Zone 默认就是不渲染任何东西）
   }
-
+  
   triggerEnterRoom() {
+    this.scene.sound.play('shutter');
     this.scene.showRoomEnterPopup(this);
   }
 }

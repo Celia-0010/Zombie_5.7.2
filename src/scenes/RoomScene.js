@@ -16,15 +16,6 @@ export class RoomScene extends Phaser.Scene {
     create() {
                 // 根据房间类型设置不同配置
         switch(this.roomType) {
-            case 'medical':
-                this.initMedicalRoom();
-                break;
-            case 'Restaurant':
-                this.initRestaurant();
-                break;
-            case 'GasStation':
-                this.initGasStation();
-                break;
             default:
                 this.initDefault();
         }
@@ -82,34 +73,6 @@ export class RoomScene extends Phaser.Scene {
         this.map;
         this.groundLayer;
         this.levelLayer;
-    }
-
-    initMedicalRoom() {
-        // 医疗室特有设置
-        this.mapKey = ASSETS.tilemapTiledJSON.indoor2.key
-        this.supplyTypes = [
-            { name: 'A doctor takes care of you, restoring 30 health and reducing hunger by 10.', stat: 'health', delta: +20 },
-            { name: 'The hospital is out of supplies, and you can’t find proper treatment, losing 10 health.', stat: 'health', delta: -10 },
-            { name: 'You find a discarded car at the hospital, gaining 15 fuel.', stat: 'fuel', delta: +15 }
-        ];
-        // 可以添加医疗室特有逻辑
-    }
-    
-    initRestaurant() {
-        // 厨房特有设置
-        this.mapKey = ASSETS.tilemapTiledJSON.indoor1.key;
-        this.supplyTypes = [
-            { name: 'You find a hearty meal at the restaurant, restoring 10 health and reducing hunger by 15.', stat: 'hunger', delta: +15 },
-            { name: 'The kitchen has issues, and you accidentally eat unhygienic food, losing 10 health.', stat: 'health', delta: -10 }
-        ];
-    }
-
-    initGasStation() {
-        this.mapKey = 'indoor1-map';
-        this.supplyTypes = [
-            { name: 'You find fuel at the gas station, increasing fuel by 30.', stat: 'fuel', delta: +30},
-            { name: 'The fuel pump at the gas station is broken, and you only get half the fuel, gaining 10 fuel and losing 5 gold.', stat: 'fuel', delta: +10}
-        ]
     }
 
     initAnimations() {
@@ -208,7 +171,7 @@ export class RoomScene extends Phaser.Scene {
     initDefault () {
     this.mapKey = ASSETS.tilemapTiledJSON.indoor1.key; // 默认室内地图
     this.supplyTypes = [
-        { name:'随机物资', stat:'fuel', delta:+15 }
+        { name:'You found a sandwich in 711 \n but unfortunately it is expired. ', stat:'health', delta:-15 }
     ];
     }
 
@@ -219,39 +182,36 @@ export class RoomScene extends Phaser.Scene {
         const H = this.scale.height;
 
         const rows = [ H/2 + 130, H/2 + 150, H/2 + 170 ];
-        const stats = ['health','hunger','fuel'];
+        const stats = [ 'health', 'hunger', 'fuel' ];
         this.heartGroups = {};
 
-        stats.forEach((stat,i) => {
-            this.add.text(
-                W/2 - 310, rows[i] - 13,
-                stat.charAt(0).toUpperCase() + stat.slice(1),
-                { font:'16px Arial', fill:'#ffffff',
-                stroke:'#000000', strokeThickness:4 }
-            )
-            .setScrollFactor(0)
-            .setDepth(100);
-              // 心形
-              this.add.image(
-                W / 2,
-                H / 2 + 135,
-                'hp'
-            )
-            .setScrollFactor(0)
-            .setDepth(90)          // 要低于心形(100) 高于地图
-            .setDisplaySize(350, 140);
+        stats.forEach((stat, i) => {
+            // 为每个属性新建一个数组，用来保存这一行所有的心形精灵
             this.heartGroups[stat] = [];
-                for (let j = 0; j < 10; j++) {
-                    const img = this.add.image(
-                    W/2 - 250 + j*30, rows[i], 'heart'
-                    )
-                    .setScrollFactor(0)
-                    .setDepth(100)
-                    .setVisible(false);
+            this.add.image(
+                W / 2,    // 居中显示，你也可以改成 W/2 - 100 等靠左
+                H / 2+135,        // 垂直对齐到心形所在行
+                'hp' // 你 preload 里给它的 key
+                )
+                .setScrollFactor(0) // 固定在屏幕上
+                .setDepth(90)    // 深度要比文字和心形(100)低
+                .setDisplaySize(350, 140);
 
-                    this.heartGroups[stat].push(img);
+
+            // 循环生成 10 个心形图标
+            for (let j = 0; j < 10; j++) {
+                const img = this.add.image(
+                    W / 2+ 1 + j * 16.1,
+                    rows[i],
+                    'blood'
+                )
+         
+                .setScrollFactor(0)  // 固定在屏幕上，不随摄像机移动
+                .setDepth(100)       // 保证在最前面
+
+                this.heartGroups[stat].push(img);
             }
-            });
+        });
     }
     // 在 RoomScene 里新增这个方法：
     triggerRandomEvent() {
@@ -291,7 +251,7 @@ export class RoomScene extends Phaser.Scene {
     // 弹文字提示
     const msg = this.add.text(
         this.scale.width/2, this.scale.height/2,
-        `获得物资：${name}，属性值${delta>0?'+':''}${delta}`,
+        `${name}health${delta>0?'+':''}${delta}`,
         { font:'24px Arial', fill:'#ffffff', backgroundColor:'#000000' }
     )
     .setOrigin(0.5)
