@@ -45,6 +45,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite
         // set map boundaries
         this.mapLeft = this.mapOffset.x - (this.mapOffset.tileSize * 0.5);
         this.mapRight = this.mapOffset.x + (this.mapOffset.width * this.mapOffset.tileSize) - (this.mapOffset.tileSize * 0.5);
+
+        this.helpedNPCs = []; // 记录帮助过的NPC名字
+        this.reputation = 0;  // 声誉值（可选）
     }
 
     update(time, delta) {

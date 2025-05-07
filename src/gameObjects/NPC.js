@@ -9,14 +9,12 @@ export default class NPC extends Phaser.Physics.Arcade.Sprite {
     accumulator = 0;
     target = { x: 0, y: 0 }; // NPC的目标位置
 
-    constructor(scene, x, y, name, portrait, personality, background) {
+    constructor(scene, x, y, name, dialoguePrompt) {
         super(scene, x, y, ASSETS.spritesheet.characters.key, 13); // 假设 NPC 使用 characters 的贴图
 
         // NPC 基础信息
         this.name = name; 
-        this.portrait = portrait; 
-        this.personality = personality; 
-        this.background = background; 
+        this.dialoguePrompt = dialoguePrompt;
 
         scene.add.existing(this);
         scene.physics.add.existing(this);
@@ -94,36 +92,29 @@ export default class NPC extends Phaser.Physics.Arcade.Sprite {
 
     // NPC 被点击时触发的交互逻辑
     handleInteraction() {
-        // 如果对话系统不存在则创建
-        if (!this.scene.dialogueSystem) {
+        // 确保场景中有玩家引用
+        if (!this.scene.player) {
+            console.error('Player reference not found in scene');
+            return;
+        }
+
+        // 销毁现有的对话系统（如果有）
+        if (this.scene.dialogueSystem) {
+            this.scene.dialogueSystem.closeDialogue();
+            this.scene.dialogueSystem = null;
+        }
+
+        // 创建新的对话系统实例
+        try {
             this.scene.dialogueSystem = new DialogueSystem(this.scene, this);
             this.scene.dialogueSystem.createDialogueBox();
-        }
-        
-        // 切换对话框显示状态
-        if (this.scene.dialogueSystem.dialogueBox.visible) {
-            this.scene.dialogueSystem.closeDialogue();
-        } else {
             this.scene.dialogueSystem.showDialogue();
+            
+            // 添加调试信息
+            console.log(`Dialogue with ${this.name} started`);
+        } catch (error) {
+            console.error('Failed to create dialogue:', error);
         }
-    }
-
-    // NPC 向玩家展示对话内容
-    async getDialogue(userInput) {
-        const response = await this.callLLM(userInput); // 调用 LLM 系统返回对话内容
-        return response;
-    }
-
-    // LLM接入：将NPC的背景、性格和玩家输入传递给后端并返回对话
-    async callLLM(userInput) {
-        const response = await fetch('/api/llm-dialogue', {
-            method: 'POST',
-            body: JSON.stringify({ npc: this, input: userInput }),
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        const data = await response.json();
-        return data.dialogue;  // LLM返回的对话内容
     }
 
     rejectAndMoveAway() {

@@ -33,9 +33,18 @@ export class Game extends Phaser.Scene
         this.cameras.main.setZoom(3);
         this.cameras.main.setBounds(this.mapX, this.mapY, this.mapWidth * this.tileSize, this.mapHeight * this.tileSize);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);  // 相机跟随玩家，平滑移动
+
+        // —— 【新增】物理世界边界也要跟着新地图走 —— 
+        this.physics.world.setBounds(
+            this.mapX,
+            this.mapY,
+            this.mapWidth * this.tileSize,
+            this.mapHeight * this.tileSize
+        );
+        // 确保玩家碰撞世界边界
+        this.player.body.setCollideWorldBounds(true);
+
         this.initGameUi();
-        this.initVehicleUi();
-        this.updateVehicleUI();
         
         //按F进入载具
         this.input.keyboard.on('keydown-F', this.handleVehicleToggle, this);
@@ -47,12 +56,17 @@ export class Game extends Phaser.Scene
         .setDepth(50)
         .setVisible(false);    // ←—— 一定要隐藏
 
-        this.addNPC(10, 3); // 假设在(10, 3)位置添加NPC
+        this.addNPC(10, 3, 'Stranger Doctor', "Next, you'll be playing as a [Mad Apothecary], and you're an NPC in the game Doom RV: Desperate Escape. You have the same skills and effects as him. The skill is [High Healing], which will provide the player with a positive effect: [Health Value] +10 per minute. But you need to hide your identity and pretend you're [Doctor], another NPC. In your interactions with the player, you will need to [hide your identity], request to escape together in an RV, and answer the player's questions. However, you may also trigger the hidden event [Desperate Poisoner], which halves the player's health. So if you reveal your identity, players will refuse to travel with you. However, you will need to reveal some small breaks in the dialog, such as some test tubes in the medical kit in addition to medicines, to make it possible for the player to recognize you. Note that there is no action, demeanor or psychological description. Don't talk too much, and generate only dialogues.");
+        this.addNPC(15, 5, 'Stranger Chef', "you'll be playing as a [Hannibal], and you're an NPC in the game Doom RV: Desperate Escape. You have the same skills and effects as him. The skill is [Mastery of Cooking], which will provide the player with a positive effect: [Stamina] +10 per minute. But you need to hide your identity and pretend you're [Chef], another NPC. However, you may also trigger the hidden event [Human Cuisine], which causes the player to lose a random companion NPC. so if you reveal your identity, the player will refuse to travel with you. In your interactions with the player, you will need to [hide your identity], request to escape together in an RV, and answer the player's questions. However, you need to reveal small cracks in the dialog, such as mentioning that you've found fresh ingredients, or that you can make a gourmet meal out of anything, to make it possible for the player to recognize you. Note that there is no action, demeanor or psychological description. Don't talk too much, and generate only conversations.");
+    
+
+        if (this.currentLevelIndex > 0) {
+           this.startGame()
+    }
     }
 
     update(time, delta) {
         // —— 始终刷新 UI —— 
-        this.scoreText.setText(`Score: ${this.score}`);
         this.refreshHearts();
 
         // —— 再根据 gameStarted 决定要不要跑世界逻辑 —— 
@@ -75,7 +89,6 @@ export class Game extends Phaser.Scene
         this.cameras.main.centerOnX(this.player.x);
     }
     
-
     loadNextLevel() {
         // 检查是否还有下一关
         if (this.currentLevelIndex >= this.levels.length - 1) {
@@ -83,10 +96,52 @@ export class Game extends Phaser.Scene
             this.GameOver(true); // true表示胜利
             return;
         }
-       this.scene.restart({
-       levelIndex: this.currentLevelIndex + 1
-          });
+
+        // 清理当前关卡
+        this.clearCurrentLevel();
+
+        // 更新当前关卡索引
+        this.currentLevelIndex++;
+
+        // 获取新的关卡配置
+        const currentLevel = this.levels[this.currentLevelIndex];
+
+        // 重新设置地图宽度、高度和起始位置
+        this.mapWidth = currentLevel.mapWidth;
+        this.mapHeight = currentLevel.mapHeight;
+        this.playerStart = currentLevel.playerStart;
+        this.enemyStart = currentLevel.enemyStart;
+
+        this.tileIds = currentLevel.tileIds;
+
+        // 重新设置地图偏移量
+        this.mapX = this.centreX - (this.mapWidth * this.tileSize * 0.5);
+        this.mapY = this.centreY - (this.mapHeight * this.tileSize * 0.5);
+
+        // 重新初始化地图
+        this.initMap();
+
+        // 将玩家传送到新地图的起始位置
+        this.player.setPosition(
+            this.playerStart.x * this.tileSize + this.mapX,
+            this.playerStart.y * this.tileSize + this.mapY
+        );
+
+        // 重置玩家的目标位置
+        this.player.target.x = this.player.x;
+        this.player.target.y = this.player.y;
+
+        // 重置输入状态（假设cursors是Phaser的键盘输入对象）
+        const cursors = this.input.keyboard.createCursorKeys();
+        cursors.left.isDown = false;
+        cursors.right.isDown = false;
+        cursors.up.isDown = false;
+        cursors.down.isDown = false;
+
+        // 重置相机跟随
+        this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
     }
+
 
     initVariables ()
     {
@@ -119,21 +174,16 @@ export class Game extends Phaser.Scene
                 },
                 mapWidth: 40,
                 mapHeight: 20,
-                playerStart: { x: 0, y: 0 },
+                playerStart: { x: 1, y: 16 },
                 enemyStart: { x: 12, y: 4 }
             },
             {
                 tilemapKey: 'level3-map',  // 关卡 3
                 tileIds: {
-                    player: 96,
-                    enemy: 95,
-                    coin: 94,
-                    bomb: 106,
                     walls: [16, 17, 45, 46, 47, 48, 53, 54, 55, 56],
-                    door: 86
                 },
-                mapWidth: 50,
-                mapHeight: 10,
+                mapWidth: 40,
+                mapHeight: 20,
                 playerStart: { x: 0, y: 6 },
                 enemyStart: { x: 12, y: 4 }
             }
@@ -173,39 +223,6 @@ export class Game extends Phaser.Scene
         const W = this.scale.width;
         const H = this.scale.height;
 
-        // Create tutorial text
-        this.tutorialText = this.add.text(
-        W / 2, H / 2,
-            'Arrow keys to move!\nPress Spacebar to Start',
-            {
-                fontFamily: 'Arial Black',
-                fontSize: '42px',
-                color: '#ffffff',
-                stroke: '#000000',
-                strokeThickness: 8,
-                align: 'center'
-            }
-        )
-            .setOrigin(0.5)
-            .setScrollFactor(0)   // 固定位置
-            .setDepth(100);
-
-        // Create score text
-        this.scoreText = this.add.text(
-            W / 2 - 250, H / 2 - 160,
-            'Score: 0',
-            {
-                fontFamily: 'Arial Black',
-                fontSize: '22px',
-                color: '#ffffff',
-                stroke: '#000000',
-                strokeThickness: 8
-            }
-        )
-            .setOrigin(0.5)
-            .setScrollFactor(0)
-            .setDepth(100);
-
         // Create game over text
         this.gameOverText = this.add.text(
             W / 2, H / 2,
@@ -223,49 +240,32 @@ export class Game extends Phaser.Scene
             .setScrollFactor(0)   // 固定位置
             .setDepth(100)
             .setVisible(false);
-        
-        this.exitButton = this.add.text(W/2 - 300, H/2 + 90, 'Exit Vehicle', {
-            fontSize: '18px', fill: '#fff', backgroundColor: '#000'
-            })
-            .setScrollFactor(0).setInteractive().setDepth(100);
-
-        this.enterButton = this.add.text(W/2 + 150, H/2 + 90, 'Enter Vehicle', {
-            fontSize: '18px', fill: '#fff', backgroundColor: '#666'
-            })
-            .setScrollFactor(0).setInteractive().setDepth(100)
-            .setAlpha(0.5);  // 初始灰色，不可点击
 
         
         // 创建属性心形条
-        const rows = [ H / 2 + 130, H / 2 + 150, H / 2 + 170 ];
+        const rows = [ H / 2 + 117, H / 2 + 135, H / 2 + 153 ];
         const stats = [ 'health', 'hunger', 'fuel' ];
         this.heartGroups = {};
 
         stats.forEach((stat, i) => {
             // 为每个属性新建一个数组，用来保存这一行所有的心形精灵
             this.heartGroups[stat] = [];
+            this.add.image(
+                W / 2,    // 居中显示，你也可以改成 W/2 - 100 等靠左
+                H / 2+135,        // 垂直对齐到心形所在行
+                'hp' // 你 preload 里给它的 key
+                )
+                .setScrollFactor(0) // 固定在屏幕上
+                .setDepth(90)    // 深度要比文字和心形(100)低
+                .setDisplaySize(350, 140);
 
-            this.add.text(
-            W/2 - 310,         // 文本 x
-            rows[i]-13,           // 文本 y 对应这一行
-            stat.charAt(0).toUpperCase() + stat.slice(1), // 首字母大写
-            {
-                fontFamily: 'Arial Black',
-                fontSize: '10px',
-                color: '#ffffff',
-                stroke: '#000000',
-                strokeThickness: 8,
-            }
-        )
-            .setScrollFactor(0)
-            .setDepth(100);
 
             // 循环生成 10 个心形图标
             for (let j = 0; j < 10; j++) {
                 const img = this.add.image(
-                    W / 2 - 250 + j * 25,
+                    W / 2+ 1 + j * 16.1,
                     rows[i],
-                    'heart'
+                    'blood'
                 )
          
                 .setScrollFactor(0)  // 固定在屏幕上，不随摄像机移动
@@ -276,6 +276,7 @@ export class Game extends Phaser.Scene
         });
         this.refreshHearts();
     }
+
 
     handleVehicleToggle() {
     if (this.inVehicle) {
@@ -314,33 +315,6 @@ export class Game extends Phaser.Scene
     // 刷新一下按钮的高亮状态
     this.updateVehicleUI();
     }
-
-    // Game.js
-
-    initVehicleUi() {
-    const W = this.scale.width, H = this.scale.height;
-
-    this.exitButton = this.add.text(W/2 - 100, H - 50, 'Exit (F)', {
-        fontSize: '18px', fill:'#fff', backgroundColor:'#000'
-    })
-        .setScrollFactor(0).setDepth(200);
-
-    this.enterButton = this.add.text(W/2 + 100, H - 50, 'Enter (F)', {
-        fontSize: '18px', fill:'#fff', backgroundColor:'#000'
-    })
-        .setScrollFactor(0).setDepth(200);
-    }
-
-    updateVehicleUI() {
-    if (this.inVehicle) {
-        this.exitButton.setAlpha(1);
-        this.enterButton.setAlpha(0.5);
-    } else {
-        this.exitButton.setAlpha(0.5);
-        this.enterButton.setAlpha(1);
-    }
-    }
-
 
 
     refreshHearts() 
@@ -533,7 +507,7 @@ export class Game extends Phaser.Scene
             }
         },
         (player, door) => {
-            const mapOffset = this.mapX; // 或者用 getMapOffset 拿到 mapX/Y
+            const mapOffset = this.mapX; 
             const tileSize  = this.tileSize;
             const px = Math.round((player.x - mapOffset) / tileSize);
             const py = Math.round((player.y - this.mapY) / tileSize);
@@ -544,6 +518,13 @@ export class Game extends Phaser.Scene
         null,   // 不再使用自定义过滤
         this
         );
+            // —— 新增：让玩家跟 building/sidebuilding 碰撞 —— 
+        if (this.blockLayerList) {
+           this.blockLayerList.forEach(layer => {
+             this.physics.add.collider(this.player, layer);
+           });
+         }
+        
 
     }
 
@@ -573,6 +554,8 @@ export class Game extends Phaser.Scene
     {
         /* ───────── 0. 读取本关配置 ───────── */
         const cur = this.levels[this.currentLevelIndex];
+        // —— 新增：清掉上一次关卡遗留的 block 层 —— 
+        this.blockLayerList = [];
 
         this.mapWidth    = cur.mapWidth;
         this.mapHeight   = cur.mapHeight;
@@ -605,62 +588,66 @@ export class Game extends Phaser.Scene
             '\u5149\u6807',
         ];
 
-        layerNames.forEach(name => {
-            const layer = this.map.createLayer(name, tilesets, this.mapX, this.mapY);
-            this.levelLayerGroup.add(layer);
+    layerNames.forEach(name => {
+        if (!this.map.layers.some(l => l.name === name)) return;
 
-            // 把“墙”瓦片设为碰撞
-            if (this.tileIds?.walls) {
-                layer.setCollision(this.tileIds.walls);
-            }
-            if (name === '\u5149\u6807') {
-                for (let y = 0; y < this.mapHeight; y++) {
-                    for (let x = 0; x < this.mapWidth; x++) {
-                        const tile = layer.getTileAt(x, y);
-                        if (tile && tile.index !== 0) {
-                            // 清掉光标瓦片
-                            tile.index = -1;
-                            // 在同一格生成 Door
-                            this.addDoor(x, y);
-                        }
+        const layer = this.map.createLayer(name, tilesets, this.mapX, this.mapY);
+        if (!layer) return;
+        this.levelLayerGroup.add(layer);
+
+        // 把“墙”瓦片设为碰撞
+        if (this.tileIds?.walls) {
+            layer.setCollision(this.tileIds.walls);
+        }
+
+        // —— 新增：building / sidebuilding 碰撞 —— 
+        if (name === 'building' || name === 'sidebuilding') {
+            layer.setCollisionByExclusion([0]);
+            if (!this.blockLayerList) this.blockLayerList = [];
+            this.blockLayerList.push(layer);
+        }  // ← 结束 building/sidebuilding 的 if
+
+        // “光标”层 → Door 逻辑
+        if (name === '\u5149\u6807') {
+            for (let y = 0; y < this.mapHeight; y++) {
+                for (let x = 0; x < this.mapWidth; x++) {
+                    const tile = layer.getTileAt(x, y);
+                    if (tile && tile.index !== 0) {
+                        tile.index = -1;
+                        this.addDoor(x, y);
                     }
                 }
             }
-        });
-        
+        }  // ← 结束 光标 的 if
 
-        /* 3.3 保存一层做逻辑扫描（这里选 'building'） */
+    });  // ← 结束 forEach 回调
+
+
+
         this.levelLayer = this.levelLayerGroup.getChildren()
-                            .find(l => l.layer.name === 'building');
+            .find(l => l.layer.name === 'building');
+
+        if (!this.levelLayer) {
+        console.error(
+            `第${this.currentLevelIndex+1}关找不到 "building" 图层，地图里实际有：`,
+            this.map.layers.map(l => l.name)
+        );
+        return;
+        }
 
         /* ───────── 4. 遍历格子 → 生成动态元素 ───────── */
         for (let y = 0; y < this.mapHeight; y++) {
-            for (let x = 0; x < this.mapWidth; x++) {
-
-                const tile = this.levelLayer.getTileAt(x, y);
-                if (!tile) continue;
-
-                switch (tile.index) {
-
-                    case this.tileIds.player:
-                        tile.index = -1;
-                        this.playerStart = { x, y };
-                        break;
-
-                    case this.tileIds.enemy:
-                        tile.index = -1;
-                        this.enemyStart  = { x, y };
-                        break;
-                }
-            }
+        for (let x = 0; x < this.mapWidth; x++) {
+            const tile = this.levelLayer.getTileAt(x, y);
+            if (!tile) continue;
         }
+    }
     }
 
 
     startGame ()
     {
         this.gameStarted = true;
-        this.tutorialText.setVisible(false);
     }
 
     addEnemy ()
@@ -684,13 +671,13 @@ export class Game extends Phaser.Scene
         this.doorGroup.add(door); // 仅需添加到组
     }
 
-    // 添加NPC方法
-    addNPC(x, y) {
-        const npc = new NPC(this, x, y, 'NPC Name', 'npc_portrait', 'Friendly', 'Background Info');  // 创建NPC
-        this.npcGroup.add(npc); // 添加到npc组
-        const dialogueSystem = new DialogueSystem(this, npc);  // 创建对话系统实例
-        npc.dialogueSystem = dialogueSystem; // 将对话系统传给NPC
-        npc.dialogueSystem.createDialogueBox(); // 创建对话框
+    // 在Game类中修改addNPC方法
+    addNPC(x, y, name, dialoguePrompt) {
+        const npc = new NPC(this, x, y, name, dialoguePrompt);
+        this.npcGroup.add(npc);
+        
+        // 不再在这里创建对话系统
+        return npc;
     }
 
     removeItem (item)
@@ -703,11 +690,20 @@ export class Game extends Phaser.Scene
             this.GameOver();
         }
     }
-
-    addBomb (x, y)
-    {
-        this.itemGroup.add(new Bomb(this, x, y));
-    }
+    getMapOffset() {
+        return {
+            x: this.mapX + this.halfTileSize,
+            y: this.mapY + this.halfTileSize,
+            tileSize: this.tileSize,
+            width: this.mapWidth,
+            height: this.mapHeight
+        };
+        }
+    getTileAt(worldX, worldY) {
+        const tile = this.levelLayer.getTileAtWorldXY(worldX, worldY, true);
+        // tile.index 在 this.tileIds.walls 数组里，返回它的下标；否则返回 -1
+        return tile ? this.tileIds.walls.indexOf(tile.index) : -1;
+        }
 
     destroyEnemies ()
     {
@@ -721,55 +717,75 @@ export class Game extends Phaser.Scene
     }
 
     clearCurrentLevel() {
-        // 清理敌人、物品、门、NPC 等
+        // 清理敌人、物品、门、NPC
         this.enemyGroup.clear(true, true);
         this.itemGroup.clear(true, true);
         this.doorGroup.clear(true, true);
         this.npcGroup.clear(true, true);
 
-        // 清理地图层
-        if (this.groundLayer) {
-            this.groundLayer.destroy(true);
+        // —— 新增：彻底清理上一次生成的所有 tilemap layer —— 
+        if (this.levelLayerGroup) {
+            // 销毁所有子 layer
+            this.levelLayerGroup.getChildren().forEach(layer => layer.destroy());
+            // 清空并销毁 group 本身
+            this.levelLayerGroup.clear(true, true);
+            this.levelLayerGroup.destroy(true);
+            this.levelLayerGroup = null;
         }
-        if (this.levelLayer) {
-            this.levelLayer.destroy(true);
-        }
+
+        // —— 新增：移除上一次注册的所有 building/sidebuilding 碰撞 —— 
+        this.physics.world.colliders.getActive().forEach(collider => {
+            // 找出那些碰撞体里有 tilemap layer 的
+            if (collider.object2 && collider.object2 instanceof Phaser.Tilemaps.TilemapLayer) {
+                this.physics.world.removeCollider(collider);
+            }
+        });
+
+        // 清空 blockLayerList，避免后续复用
+        this.blockLayerList = [];
     }
 
-    collectItem (player, item)
-    {
-        item.collect();
-    }
 
-    updateScore (points)
-    {
-        this.score += points;
-        this.scoreText.setText(`Score: ${this.score}`);
-    }
-
-    getMapOffset ()
-    {
-        return {
-            x: this.mapX + this.halfTileSize,
-            y: this.mapY + this.halfTileSize,
-            width: this.mapWidth,
-            height: this.mapHeight,
-            tileSize: this.tileSize
-        }
-    }
-
-    getTileAt (x, y)
-    {
-        const tile = this.levelLayer.getTileAtWorldXY(x, y, true);
-        return tile ? this.tileIds.walls.indexOf(tile.index) : -1;
-    }
-
-    GameOver (isWin = false)
-    {
+  GameOver(isWin = false) {
         this.gameStarted = false;
+        
         if (isWin) {
-            this.gameOverText.setText('You Win!');
+            // 根据帮助的NPC数量决定结局
+            const totalHelped = this.player.helpedNPCs?.length || 0;
+            let endingText = '';
+            let endingColor = '#FFFFFF';
+            
+            if (totalHelped >= 3) {
+                endingText = '完美结局：你拯救了所有需要帮助的人！';
+                endingColor = '#FFD700'; // 金色
+            } else if (totalHelped >= 1) {
+                endingText = '好结局：你帮助了一些人逃出生天';
+                endingColor = '#00FF00'; // 绿色
+            } else {
+                endingText = 'Bad Ending: You helped two strangers,\nbut Dr.Wen is killed by Chef Hannibal...';
+                endingColor = '#FFFFFF'; // 白色
+            }
+            
+            // 显示统计信息
+            const statsText = `Survival: ${totalHelped}\nKindness: ${this.player.reputation}`;
+            
+            // 创建胜利文本
+            this.gameOverText.setText([
+                '到达终点',
+                '',
+                endingText,
+                '',
+                statsText
+            ])
+            .setColor(endingColor)
+            .setFontSize(18);
+            
+        } else {
+            this.gameOverText.setText('Game Over')
+                .setColor('#FF0000').setFont('Zombie').setFontSize('30pt');
         }
+        
         this.gameOverText.setVisible(true);
     }
+
 }

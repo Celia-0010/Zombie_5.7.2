@@ -10,54 +10,55 @@ export default class DialogueSystem {
     }
 
     createDialogueBox() {
-        const x = this.scene.cameras.main.worldView.centerX;
-        const y = this.scene.cameras.main.worldView.centerY;
+        try {
+            const x = this.scene.cameras.main.worldView.centerX;
+            const y = this.scene.cameras.main.worldView.centerY;
 
-        // 对话框容器
-        this.dialogueBox = this.scene.add.container(x, y).setDepth(150);
+            // 先销毁旧的对话框（如果存在）
+            if (this.dialogueBox) {
+                this.dialogueBox.destroy(true);
+            }
 
-        // 背景
-        const bg = this.scene.add.rectangle(0, 0, 600, 400, 0x222222, 0.9)
-            .setStrokeStyle(2, 0xffffff)
-            .setOrigin(0.5);
-        this.dialogueBox.add(bg);
+            // 对话框容器
+            this.dialogueBox = this.scene.add.container(x, y).setDepth(1000); // 提高深度值
 
-        // NPC头像
-        const portrait = this.scene.add.image(-250, -120, this.npc.portrait)
-            .setOrigin(0.5)
-            .setDisplaySize(100, 100);
-        this.dialogueBox.add(portrait);
+            // 背景
+            const bg = this.scene.add.rectangle(0, 0, 600, 350, 0x222222, 0.9)
+                .setStrokeStyle(2, 0xffffff)
+                .setOrigin(0.5);
+            this.dialogueBox.add(bg);
 
-        // NPC名称
-        const nameText = this.scene.add.text(-150, -150, this.npc.name, {
-            font: '20px Arial',
-            fill: '#ffffff'
-        });
-        this.dialogueBox.add(nameText);
+            // 对话历史显示区域
+            this.dialogueText = this.scene.add.text(-250, -100, '', {
+                font: '16px Arial',
+                fill: '#ffffff',
+                wordWrap: { width: 500 },
+                lineSpacing: 8,
+                padding: { x: 0, y: 100 }
+            }).setDepth(1001); // 比背景高一级
+            this.dialogueBox.add(this.dialogueText);
 
-        // 对话历史显示区域
-        this.dialogueText = this.scene.add.text(-250, -100, '', {
-            font: '16px Arial',
-            fill: '#ffffff',
-            wordWrap: { width: 500 },
-            lineSpacing: 10
-        });
-        this.dialogueBox.add(this.dialogueText);
+            // 玩家输入框
+            this.createInputField();
+            
+            // 控制按钮
+            this.createControlButtons();
+            this.createButtons();
 
-        // 玩家输入框
-        this.createInputField();
-        
-        // 控制按钮
-        this.createControlButtons();
-        this.createButtons();
+            // 初始隐藏对话框
+            this.dialogueBox.setVisible(false);
+
+        } catch (error) {
+            console.error('Failed to create dialogue box:', error);
+            throw error;
+        }
     }
 
     createInputField() {
-        /* 输入框背景
-        const inputBg = this.scene.add.rectangle(0, 120, 500, 40, 0x444444)
-            .setOrigin(0.5);
-        this.dialogueBox.add(inputBg);
-        */
+        // 先销毁旧的输入框（如果存在）
+        if (this.inputField) {
+            this.inputField.destroy();
+        }
 
         // 实际输入框（使用DOM元素）
         const style = {
@@ -72,10 +73,12 @@ export default class DialogueSystem {
 
         this.inputField = this.scene.add.dom(0, 120)
             .createElement('input', style)
-            .setOrigin(0.5);
+            .setOrigin(0.5)
+            .setDepth(1001); // 确保在正确层级
 
         // 为DOM元素绑定事件
         this.inputField.node.addEventListener('keydown', (event) => {
+            event.stopPropagation(); // 阻止事件冒泡
             if (event.key === 'Enter' && !this.isWaitingForAI) {
                 this.handlePlayerInput();
             }
@@ -156,8 +159,80 @@ export default class DialogueSystem {
 
     // 处理“帮助”按钮的点击
     handleHelp() {
-        console.log('Help button clicked!');
-        // 可以在这里添加帮助功能的逻辑
+        // 播放帮助音效
+        // this.scene.sound.play('help-sound');
+        
+        // 1. 记录玩家帮助了该NPC
+        this.recordNPCHelp();
+        
+        // 2. 销毁NPC
+        this.destroyNPC();
+        
+        // 3. 关闭对话框
+        this.closeDialogue();
+        
+        // 4. 显示帮助成功的提示
+        this.showHelpSuccessMessage();
+    }
+
+    // 记录玩家帮助了该NPC
+    recordNPCHelp() {
+        if (!this.scene.player.helpedNPCs) {
+            this.scene.player.helpedNPCs = [];
+        }
+        
+        // 避免重复记录
+        if (!this.scene.player.helpedNPCs.includes(this.npc.name)) {
+            this.scene.player.helpedNPCs.push(this.npc.name);
+            this.scene.player.reputation += 10; // 每次帮助增加10点声誉
+            console.log(`帮助记录: ${this.npc.name}`);
+        }
+    }
+
+    // 销毁NPC
+    destroyNPC() {
+        // 从NPC组中移除
+        if (this.scene.npcGroup) {
+            this.scene.npcGroup.remove(this.npc, true, true);
+        }
+        
+        // 销毁NPC对象
+        if (this.npc.destroy) {
+            this.npc.destroy();
+        }
+        
+        // 显示消失效果
+        this.showNPCDisappearEffect();
+    }
+    
+    // 显示NPC消失效果
+    showNPCDisappearEffect() {
+        const effect = this.scene.add.particles(this.npc.x, this.npc.y, 'help-effect', {
+            frame: [0, 1, 2, 3],
+            lifespan: 1000,
+            speed: { min: 20, max: 50 },
+            scale: { start: 1, end: 0 },
+            alpha: { start: 1, end: 0 },
+            quantity: 10,
+            blendMode: 'ADD'
+        });
+        
+        this.scene.time.delayedCall(1000, () => effect.destroy());
+    }
+
+    // 显示NPC消失效果
+    showNPCDisappearEffect() {
+        const effect = this.scene.add.particles(this.npc.x, this.npc.y, 'help-effect', {
+            frame: [0, 1, 2, 3],
+            lifespan: 1000,
+            speed: { min: 20, max: 50 },
+            scale: { start: 1, end: 0 },
+            alpha: { start: 1, end: 0 },
+            quantity: 10,
+            blendMode: 'ADD'
+        });
+        
+        this.scene.time.delayedCall(1000, () => effect.destroy());
     }
 
     // 处理“取消”按钮的点击
@@ -199,52 +274,66 @@ export default class DialogueSystem {
 
 
     async addToDialogueHistory(text) {
+        // 添加到对话历史
         this.dialogueHistory.push(text);
-        if (this.dialogueHistory.length > 10) {
+        if (this.dialogueHistory.length > 10) { // 如果对话历史超过10行，移除最旧的对话
             this.dialogueHistory.shift();
         }
 
-        // 清空现有文本
-        this.dialogueText.setText('');
-
-        // 打字机效果显示历史
+        // 生成完整的对话文本，保留历史记录
+        let fullText = '';
         for (const line of this.dialogueHistory) {
-            this.dialogueText.setText(this.dialogueText.text + line + '\n\n');
-            await this.delay(50);
+            fullText += line + '\n\n'; // 每个对话行后加上换行符
         }
+        
+        // 更新对话框文本，不清空现有内容，直接追加
+        this.dialogueText.setText(fullText);
+        
+        // 自动滚动到底部
+        this.scrollPosition = Math.min(0, 200 - this.dialogueText.height);
+        this.dialogueText.y = this.scrollPosition;
+        
+        // 打字机效果
+        await this.typewriterEffect(fullText);
     }
+
 
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    async fetchNPCResponse(inputText) {
-        // 模拟API调用延迟
-        await this.delay(1000 + Math.random() * 2000);
+    async fetchNPCResponse(userInput) {
+        const userprompt = this.inputField.node.value; // 直接获取输入框值
+        const systemprompt = this.npc.dialoguePrompt; // 使用当前NPC的提示
         
-        // 这里替换为实际的API调用
-        /*
-        const response = await fetch('YOUR_AI_API_ENDPOINT', {
+        const options = {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                Authorization: 'Bearer sk-ouqdktoouhhiixgepwyfqzrkidsxawwvtpmmaqtnhpdjixco',
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
-                npc: this.npc,
-                playerInput: inputText
+                model: "Qwen/Qwen3-14B",
+                stream: false,
+                max_tokens: 200,
+                enable_thinking: false,
+                thinking_budget: 1,
+                temperature: 0.2,
+                top_p: 0.7,
+                top_k: 50,
+                frequency_penalty: 0.5,
+                n: 1,
+                stop: [],
+                messages: [
+                    { role: "system", content: systemprompt },
+                    { role: "user", content: userprompt }
+                ]
             })
-        });
-        const data = await response.json();
-        return data.response;
-        */
+        };
         
-        // 模拟AI回复（实际使用时删除）
-        const responses = [
-            "这是个有趣的问题...",
-            "让我想想...",
-            "根据我的经验...",
-            "我不确定，但也许...",
-            "这是个复杂的话题..."
-        ];
-        return responses[Math.floor(Math.random() * responses.length)];
+        const response = await fetch('https://api.siliconflow.cn/v1/chat/completions', options);
+        const data = await response.json();
+        return data.choices?.[0]?.message?.content;
     }
 
     showDialogue() {
