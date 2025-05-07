@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" compressionlevel="0" width="9" height="9" tilewidth="32" tileheight="32" infinite="0" nextlayerid="4" nextobjectid="1">
+ <editorsettings>
+  <export target="indoor.json" format="json"/>
+ </editorsettings>
+ <tileset firstgid="1" name="tiles" tilewidth="32" tileheight="32" tilecount="132" columns="12">
+  <image source="tiles.png" width="384" height="352"/>
+ </tileset>
+ <layer id="2" name="level" width="9" height="9">
+  <data encoding="csv">
+97,98,98,98,98,98,98,98,99,
+109,110,110,110,110,110,110,110,111,
+109,110,110,110,110,110,110,110,111,
+109,110,110,110,110,110,110,110,111,
+109,110,110,110,110,110,110,110,111,
+109,110,110,110,110,110,110,110,111,
+109,110,110,110,110,110,110,110,111,
+109,110,110,110,110,110,110,110,111,
+121,122,122,122,79,122,122,122,123
+</data>
+ </layer>
+</map>
