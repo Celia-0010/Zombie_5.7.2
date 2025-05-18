@@ -19,7 +19,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite
         this.target.y = this.mapOffset.y + (y * this.mapOffset.tileSize);
         this.setPosition(this.target.x, this.target.y);
         this.setCollideWorldBounds(true);
-        this.setDepth(100);
+        this.setDepth(60);
         this.scene = scene;
         this.frameDuration = this.moveSpeed / this.mapOffset.tileSize;
 
@@ -96,14 +96,14 @@ export default class Player extends Phaser.Physics.Arcade.Sprite
   }
     // 切换为人物模式
   enterCharacterMode() {
-      this.scene.sound.play('street');
-      this.inVehicle = false;
-      this.setTexture(ASSETS.spritesheet.characters.key );
-      const snappedX = Math.round((this.x - this.mapOffset.x) / this.mapOffset.tileSize) * this.mapOffset.tileSize + this.mapOffset.x;
-      const snappedY = Math.round((this.y - this.mapOffset.y) / this.mapOffset.tileSize) * this.mapOffset.tileSize + this.mapOffset.y;
+    this.scene.sound.play('street');
+    this.inVehicle = false;
+    this.setTexture(ASSETS.spritesheet.characters.key );
+    const snappedX = Math.round((this.x - this.mapOffset.x) / this.mapOffset.tileSize) * this.mapOffset.tileSize + this.mapOffset.x;
+    const snappedY = Math.round((this.y - this.mapOffset.y) / this.mapOffset.tileSize) * this.mapOffset.tileSize + this.mapOffset.y;
 
-      this.setPosition(snappedX, snappedY);
-      this.target.set(snappedX, snappedY);
+    this.setPosition(snappedX, snappedY);
+    this.target.set(snappedX, snappedY);
   }
 
   // 切换为房车模式
@@ -133,7 +133,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite
     this.scene.sound.play('attack');
     if (this.health <= 0) {
       // this.scene 是 RoomScene，我们要调用真正的 GameScene
-      this.scene.gameScene.GameOver();  
+      this.gameScene.GameOver(); 
     }
     }
 }

@@ -8,6 +8,12 @@ export default class NPC extends Phaser.Physics.Arcade.Sprite {
     frameDuration = 0;
     accumulator = 0;
     target = { x: 0, y: 0 }; // NPC的目标位置
+    path      = [];   // A* 规划出的格子序列
+    pathIndex = 0;    // 当前走到 path 的第几个节点
+    repathCD  = 0;    // 路径重算冷却 (ms)
+    chaseStep = 1;    // 一帧移动多少像素，可调
+    moveAwayEvent = null; // 新增：存储移动事件的引用
+
 
     constructor(scene, x, y, name, dialoguePrompt) {
         super(scene, x, y, ASSETS.spritesheet.characters.key, 13); // 假设 NPC 使用 characters 的贴图
@@ -19,14 +25,11 @@ export default class NPC extends Phaser.Physics.Arcade.Sprite {
         scene.add.existing(this);
         scene.physics.add.existing(this);
 
-        this.mapOffset = scene.getMapOffset();
-        this.target.x = this.mapOffset.x + (x * this.mapOffset.tileSize);
-        this.target.y = this.mapOffset.y + (y * this.mapOffset.tileSize);
-        this.setPosition(this.target.x, this.target.y);
+        this.target = { x: x, y: y };
+        this.setPosition(x, y);
         this.setCollideWorldBounds(true);
         this.setDepth(100);
         this.scene = scene;
-        this.frameDuration = this.moveSpeed / this.mapOffset.tileSize;
 
         // 设置 NPC 可交互
         this.setInteractive();
@@ -37,58 +40,81 @@ export default class NPC extends Phaser.Physics.Arcade.Sprite {
         });
     }
 
+    // 新增：销毁NPC时的清理方法
+    destroy() {
+        // 清除移动事件
+        if (this.moveAwayEvent) {
+            this.moveAwayEvent.remove();
+            this.moveAwayEvent = null;
+        }
+        
+        // 调用父类的destroy方法
+        super.destroy();
+    }
+
     update (delta, player) {
         if (this.isRejecting) {
             // 如果 NPC 正在远离玩家，则跳过靠近玩家的逻辑
             return; // 不再执行接近玩家的逻辑
-        }else{
-            this.moveTowardsPlayer(player); // 如果不在拒绝状态，执行靠近玩家的逻辑
         }
+        this.moveTowardsPlayer(player, delta); // 如果不在拒绝状态，执行靠近玩家的逻辑
     }
 
     // 将靠近玩家的逻辑提取为一个单独的方法
-    moveTowardsPlayer(player) {
-        // 获取NPC与玩家之间的距离
-        const distance = Phaser.Math.Distance.Between(this.x, this.y, player.x, player.y);
-
-        // 如果距离小于一定阈值，NPC停止移动
-        if (distance > 60 && distance < 400) {
-            // 计算 NPC 朝向玩家的方向
-            this.target.x = player.x;
-            this.target.y = player.y;
+    moveTowardsPlayer(player, delta) {
+        /* -------- 1 计算/更新 A* 路径 -------- */
+        this.repathCD -= delta;
+        if (this.repathCD <= 0 || this.path.length === 0) {
+            this.computePathToPlayer(player);
+            this.repathCD = 600;   // 每 0.6 秒重新寻路
         }
 
-        // 计算到目标位置的距离
-        const targetDistance = Phaser.Math.Distance.Between(this.x, this.y, this.target.x, this.target.y);
-        if (targetDistance > 2) {
-            // 计算玩家的偏移位置，稍微右下方
-            this.target.x = this.target.x + 2; // 玩家位置右移50
-            this.target.y = this.target.y + 2; // 玩家位置下移50
+        /* -------- 2 按路径逐格移动 -------- */
+        if (this.path.length) {
+            const next = this.path[this.pathIndex];
+            const tileSize = this.scene.tileSize;
+            const targetX = this.scene.mapX + next.x * tileSize + this.scene.halfTileSize;
+            const targetY = this.scene.mapY + next.y * tileSize + this.scene.halfTileSize;
 
-            // 计算 NPC 向目标方向的单位向量
-            const direction = new Phaser.Math.Vector2(this.target.x - this.x, this.target.y - this.y).normalize();
-
-            // 根据单位向量移动 NPC
-            this.x += direction.x * this.moveSpeed;
-            this.y += direction.y * this.moveSpeed;
-
-            // 根据移动方向播放动画
-            if (Math.abs(direction.x) > Math.abs(direction.y)) {
-                if (direction.x > 0) {
-                    this.anims.play(ANIMATION.npc.right.key, true); // 向右移动
+            // 计算移动方向
+            const dx = targetX - this.x;
+            const dy = targetY - this.y;
+            
+            // 根据移动方向播放对应动画
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // 水平移动为主
+                if (dx > 0) {
+                    this.anims.play('npc-right', true); // 向右移动
                 } else {
-                    this.anims.play(ANIMATION.npc.left.key, true); // 向左移动
+                    this.anims.play('npc-left', true);  // 向左移动
                 }
             } else {
-                if (direction.y > 0) {
-                    this.anims.play(ANIMATION.npc.down.key, true); // 向下移动
+                // 垂直移动为主
+                if (dy > 0) {
+                    this.anims.play('npc-down', true);  // 向下移动
                 } else {
-                    this.anims.play(ANIMATION.npc.up.key, true); // 向上移动
+                    this.anims.play('npc-up', true);    // 向上移动
                 }
             }
-        }
 
+            const step = this.chaseStep;
+            this.x = this.MoveTowards(this.x, targetX, step);
+            this.y = this.MoveTowards(this.y, targetY, step);
+
+            // 走到节点中心后继续下一个
+            if (Phaser.Math.Distance.Between(this.x, this.y, targetX, targetY) < 1) {
+                this.pathIndex++;
+                if (this.pathIndex >= this.path.length) {
+                    this.path.length = 0;
+                    this.anims.stop(); // 到达目的地后停止动画
+                }
+            }
+        } else {
+            // 没有路径时停止动画
+            this.anims.stop();
+        }
     }
+
 
     // NPC 被点击时触发的交互逻辑
     handleInteraction() {
@@ -118,6 +144,8 @@ export default class NPC extends Phaser.Physics.Arcade.Sprite {
     }
 
     rejectAndMoveAway() {
+        if (this.isRejecting) return;
+
         // 播放拒绝音效
         if (this.scene.sound.get('reject-sound')) {
             this.scene.sound.play('reject-sound'); // 确保在preload中加载了这个音效
@@ -126,6 +154,11 @@ export default class NPC extends Phaser.Physics.Arcade.Sprite {
         }
 
         this.isRejecting = true;
+
+        // 清除之前的移动事件（如果有）
+        if (this.moveAwayEvent) {
+            this.moveAwayEvent.remove();
+        }
 
         // 设置目标位置为地图左边，假设向左移动200像素
         const mapOffset = this.scene.getMapOffset();
@@ -138,7 +171,7 @@ export default class NPC extends Phaser.Physics.Arcade.Sprite {
         this.moveSpeed = 1; // 比平常移动更快
 
         // 立即开始移动
-        this.scene.time.addEvent({
+        this.moveAwayEvent = this.scene.time.addEvent({
             delay: 10, // 每10ms更新一次
             callback: () => {
                 // 如果NPC还没到达目标位置，继续移动
@@ -158,6 +191,45 @@ export default class NPC extends Phaser.Physics.Arcade.Sprite {
             },
             loop: true // 持续循环
         });
+    }
+    MoveTowards(current, target, maxDelta) {
+        if (Math.abs(target - current) <= maxDelta) return target;
+        return current + Math.sign(target - current) * maxDelta;
+        }
+    
+    computePathToPlayer(player) {
+        // 场景里若没 pathfinder，直接返回
+        if (!this.scene.pathfinder) return;
+
+        const ts = this.scene.tileSize;
+        const gridWidth = this.scene.navGrid[0].length;
+        const gridHeight = this.scene.navGrid.length;
+
+        // 计算NPC的网格坐标
+        let sx = Math.floor((this.x - this.scene.mapX) / ts);
+        let sy = Math.floor((this.y - this.scene.mapY) / ts);
+        
+        // 计算玩家的网格坐标
+        let gx = Math.floor((player.x - this.scene.mapX) / ts);
+        let gy = Math.floor((player.y - this.scene.mapY) / ts);
+
+        // 边界检查 - 确保坐标在网格范围内
+        sx = Phaser.Math.Clamp(sx, 0, gridWidth - 1);
+        sy = Phaser.Math.Clamp(sy, 0, gridHeight - 1);
+        gx = Phaser.Math.Clamp(gx, 0, gridWidth - 1);
+        gy = Phaser.Math.Clamp(gy, 0, gridHeight - 1);
+
+        this.scene.pathfinder.findPath(sx, sy, gx, gy, path => {
+            if (path && path.length > 1) {
+                // 舍弃起点格
+                this.path = path.slice(1);
+                this.pathIndex = 0;
+            } else {
+                this.path.length = 0;
+                console.warn("找不到路径或路径无效");
+            }
+        });
+        this.scene.pathfinder.calculate();
     }
 
 }

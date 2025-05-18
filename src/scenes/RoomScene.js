@@ -6,6 +6,8 @@ import Coin   from '../gameObjects/Coin.js';
 export class RoomScene extends Phaser.Scene {
     constructor() {
         super('RoomScene');
+        this.blockLayers = [];   // 存储所有阻挡层
+        this.blockColliders = []; // 存储碰撞器引用
     }
         // 新增：接收参数
     init(data) {
@@ -16,8 +18,23 @@ export class RoomScene extends Phaser.Scene {
     create() {
                 // 根据房间类型设置不同配置
         switch(this.roomType) {
+            case 'restaurant':
+                this.initRestaurant();
+                break;
+            case 'hospital':
+                this.initHospital();
+                break;
+            case 'gasstation':
+                this.initGasstation();
+                break;
+            case 'bar':
+                this.initBar();
+                break;
+            case 'library':
+                this.initLibrary();
+                break;
             default:
-                this.initDefault();
+                this.initDefaultRoom();
         }
         this.initVariables();
         this.initAnimations();
@@ -32,10 +49,16 @@ export class RoomScene extends Phaser.Scene {
         this.spawnZombies();
         this.spawnSupplies();
 
+            // 播放背景音乐（如果有）
+        if(this.backgroundMusic) {
+            this.sound.play(this.backgroundMusic, { loop: true });
+        }
 
         //触发随机事件然后更新属性
         this.triggerRandomEvent();
         this.refreshHearts();
+
+        this.setupBlockColliders(); // 初始化碰撞系统
     }
 
     update(time, delta) {
@@ -88,55 +111,164 @@ export class RoomScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-ESC', () => {
             this.scene.stop('RoomScene');
             const game = this.scene.get('Game');
-            if (game.popupElems) {
-                game.popupElems.forEach(o => o.destroy());
-                game.popupElems = null;
-            }
+            
+            game.closePopup();
+
             this.scene.setVisible(true, 'Game');
             this.scene.resume('Game');
+            game.input.keyboard.enabled = true;
+            game.gameStarted = true;
         });
     }
 
-   initMap () {
+    initMap() {
+        /* ---- 1. 创建 tilemap ---- */
+        this.blockLayers = []; // 清空旧数据
+        this.map = this.make.tilemap({ key: this.mapKey });
 
-    /* ---- 1. 创建 tilemap ---- */
-    this.map = this.make.tilemap({ key: this.mapKey });
+        /* ---- 2. 依据 tilemap 动态设置尺寸与偏移 ---- */
+        this.mapWidth = this.map.width;     // tile 数
+        this.mapHeight = this.map.height;
+        this.mapX = this.centreX - (this.mapWidth * this.tileSize * 0.5);
+        this.mapY = this.centreY - (this.mapHeight * this.tileSize * 0.5);
 
-    /* ---- 2. 依据 tilemap 动态设置尺寸与偏移 ---- */
-    this.mapWidth  = this.map.width;     // tile 数
-    this.mapHeight = this.map.height;
-    this.mapX = this.centreX - (this.mapWidth  * this.tileSize * 0.5);
-    this.mapY = this.centreY - (this.mapHeight * this.tileSize * 0.5);
+        /* ---- 3. 自动加载第一张 tileset ---- */
+        const ts = this.map.tilesets[0];
+        const tileset = this.map.addTilesetImage(ts.name, ts.name);
 
-    /* ---- 3. 自动加载第一张 tileset ---- */
-    const ts = this.map.tilesets[0];
-    const tileset = this.map.addTilesetImage(ts.name, ts.name);
+        /* ---- 4. 创建图层 ---- */
+        this.groundLayer = this.map.createLayer('Other', tileset, this.mapX, this.mapY);
+        
+        // 初始化墙体碰撞层
+        if (this.map.layers.some(l => l.name === 'Wall')) {
+            const wallLayer = this.map.createLayer('Wall', tileset, this.mapX, this.mapY);
+            wallLayer.setCollisionByExclusion([-1, 0]); // 排除空白瓦片
+            this.blockLayers.push(wallLayer);
+        }
 
-    /* ---- 4. 创建图层（JSON 里实际叫 Other / Wall / bianyuan） ---- */
-    this.groundLayer = this.map.createLayer('Other',    tileset, this.mapX, this.mapY);
-    this.wallLayer   = this.map.createLayer('Wall',     tileset, this.mapX, this.mapY);
-    this.borderLayer = this.map.createLayer('bianyuan', tileset, this.mapX, this.mapY);
+        // 初始化边缘碰撞层
+        if (this.map.layers.some(l => l.name === 'bianyuan')) {
+            const borderLayer = this.map.createLayer('bianyuan', tileset, this.mapX, this.mapY);
+            borderLayer.setCollisionByExclusion([-1, 0]); // 排除空白瓦片
+            this.blockLayers.push(borderLayer);
+        }
 
+        /* ---- 6. 用墙层遍历，替代原 levelLayer ---- */
+        for (let y = 0; y < this.mapHeight; y++) {
+            for (let x = 0; x < this.mapWidth; x++) {
+                const tile = this.wallLayer?.getTileAt(x, y);
+                if (!tile) continue;
 
-    /* ---- 6. 用墙层遍历，替代原 levelLayer ---- */
-    for (let y = 0; y < this.mapHeight; y++) {
-        for (let x = 0; x < this.mapWidth; x++) {
-            const tile = this.wallLayer.getTileAt(x, y);
-            if (!tile) continue;
-
-            if (tile.index === this.tileIds.player) {
-                tile.index = -1;           // 玩家起点，如需可记录
-            } else if (tile.index === this.tileIds.door) {
-                tile.index = -1;           // 门格子，如需可在此生成 Door
+                if (tile.index === this.tileIds.player) {
+                    tile.index = -1;           // 玩家起点
+                } else if (tile.index === this.tileIds.door) {
+                    tile.index = -1;           // 门格子
+                }
             }
         }
     }
-}
+
+    setupBlockColliders() {
+        // 1. 清除现有碰撞器
+        this.blockColliders.forEach(c => this.physics.world.removeCollider(c));
+        this.blockColliders.length = 0;
+
+        // 2. 为每个阻挡层创建碰撞器
+        this.blockLayers.forEach(layer => {
+            // 玩家碰撞
+            const playerCol = this.physics.add.collider(this.player, layer);
+            this.blockColliders.push(playerCol);
+
+            // 丧尸碰撞
+            if (this.zombieGroup) {
+                const zombieCol = this.physics.add.collider(this.zombieGroup, layer);
+                this.blockColliders.push(zombieCol);
+            }
+
+            // 物资碰撞（如果需要）
+            if (this.supplyGroup) {
+                const supplyCol = this.physics.add.collider(this.supplyGroup, layer);
+                this.blockColliders.push(supplyCol);
+            }
+        });
+
+        console.log(`已建立 ${this.blockColliders.length} 个碰撞器`);
+    }
+
+    initRestaurant() {
+        this.mapKey = ASSETS.tilemapTiledJSON.restaurant.key; // 餐厅地图
+        this.supplyTypes = [
+            { name: "The restaurant's refrigerator suddenly loses power, causing food to spoil.\nHealth - 10", stat: "health", delta: -10 },
+            { name: " A hot meal is available.\nVitality + 20", stat: "hunger", delta: 20 },
+            { name: " You find a spare gas canister.\nfuel + 10", stat: "fuel", delta: 10 }
+        ];
+        // this.backgroundMusic = 'restaurant-bgm';
+        this.playerStart = { x: 15, y: 16 }; // 初始位置
+    }
+
+    initLibrary() {
+        this.mapKey = ASSETS.tilemapTiledJSON.library.key; // 医院地图
+        this.supplyTypes = [
+            { name: "You find a first-aid manual on a shelf.\nHealth + 10", stat: "health", delta: 10 },
+            { name: "You spent some time but found nothing...\nVitality - 5", stat: "hunger", delta: -5 }
+        ];
+        // this.backgroundMusic = 'hospital-bgm';
+        this.playerStart = { x: 12, y: 8 }; // 初始位置
+    }
+
+    initGasstation() {
+        this.mapKey = ASSETS.tilemapTiledJSON.gasstation.key;
+        this.supplyTypes = [
+            { name: "Found fuel can.\nFuel + 10", stat: "fuel", delta: 10 },
+            { name: "The fuel pump malfunctions, spilling gasoline.\nHealth - 10", stat: "health", delta: -10 },
+            { name: "The convenience store offers ready-to-eat meals.\nVitality + 10", stat: "hunger", delta: 10 }
+
+        ];
+        // this.backgroundMusic = 'gasstation-bgm';
+        this.playerStart = { x: 12, y: 8 }; // 初始位置
+    }
+
+    initBar() {
+        this.mapKey = ASSETS.tilemapTiledJSON.bar.key;
+        this.supplyTypes = [
+            { name: "Ouch! The liquor cabinet falls over, spilling glass bottles.\nHealth - 10", stat: "health", delta: -10 },
+            { name: "Snacks are available.\nVitality + 5", stat: "hunger", delta: 5 },
+            { name: "You find fuel for the bar's backup generator.\nFuel + 5", stat: "fuel", delta: 5 },
+        ];
+        // this.backgroundMusic = 'gasstation-bgm';
+        this.playerStart = { x: 20, y: 4 }; // 初始位置
+    }
+
+    initHospital() {
+        this.mapKey = ASSETS.tilemapTiledJSON.hospital.key;
+        this.supplyTypes = [
+            { name: "You find a medicine storage room.\nHealth + 15", stat: "health", delta: 15 },
+            { name: "The hospital cafeteria provides meals.\nVitality + 15", stat: "hunger", delta: 5 },
+            { name: "You find backup fuel.\nFuel + 5", stat: "fuel", delta: 5 },
+        ];
+        // this.backgroundMusic = 'gasstation-bgm';
+        this.playerStart = { x: 12, y: 8 }; // 初始位置
+    }
+
+    initDefaultRoom() {
+        this.mapKey = ASSETS.tilemapTiledJSON.room711.key;
+        this.supplyTypes = [
+            { name: "You discover an expired bottle of disinfectant behind the counter.\nHealth + 10", stat: "health", delta: 10 },
+            { name: "A packet of instant rice is found on the shelf.\nVitality + 15", stat: "hunger", delta: 15 },
+            { name: "There's a backup generator in the store.\nFuel + 10", stat: "fuel", delta: 10 }
+        ];
+        // this.backgroundMusic = 'default-bgm';
+        this.playerStart = { x: 6, y: 8 }; // 初始位置
+    }
 
 
     initPlayer() {
-        const startX = 4;
-        const startY = 7;
+        const startX = this.playerStart?.x || 4;
+        const startY = this.playerStart?.y || 7;
+
+        const worldX = this.mapX + (startX * this.tileSize);
+        const worldY = this.mapY + (startY * this.tileSize);
+
         this.player = new Player(this, startX, startY);
         this.player.enterCharacterMode();
     }
@@ -144,11 +276,22 @@ export class RoomScene extends Phaser.Scene {
     initPhysics() {
         // 玩家 与 丧尸 碰撞：调用 onZombieCollision
         this.physics.add.overlap(
-        this.player,
-        this.zombieGroup,
-        this.onZombieCollision,
-        null,
-        this
+            this.player,
+            this.zombieGroup,
+            (player, zombie) => {
+                // 更精确的距离检测
+                const distance = Phaser.Math.Distance.Between(
+                    player.x, player.y,
+                    zombie.x, zombie.y
+                );
+                
+                // 只有当距离小于阈值时才触发碰撞
+                if (distance < 20) { // 20像素的碰撞距离
+                    this.onZombieCollision(player, zombie);
+                }
+            },
+            null,
+            this
         );
 
         // 玩家 与 物资点 碰撞：调用 onSupplyCollision
@@ -159,7 +302,6 @@ export class RoomScene extends Phaser.Scene {
         null,
         this
         );
-
     }
 
     initCamera() {
@@ -245,21 +387,21 @@ export class RoomScene extends Phaser.Scene {
 
     /** 碰到物资点，调整对应属性、弹窗提示并销毁物资 */
     onSupplyCollision(player, supply) {
-    const { name, stat, delta } = supply.supplyInfo;
-    // 更新全局玩家属性（RoomScene UI 用 gameScene.player 渲染）
-    this.gameScene.player.adjustStat(stat, delta);
-    // 弹文字提示
-    const msg = this.add.text(
-        this.scale.width/2, this.scale.height/2,
-        `${name}health${delta>0?'+':''}${delta}`,
-        { font:'24px Arial', fill:'#ffffff', backgroundColor:'#000000' }
-    )
-    .setOrigin(0.5)
-    .setScrollFactor(0)
-    .setDepth(500);
-    this.time.delayedCall(1500, () => msg.destroy());
-    supply.destroy();
-    this.refreshHearts();  // 刷新心形条 :contentReference[oaicite:14]{index=14}:contentReference[oaicite:15]{index=15}
+        const { name, stat, delta } = supply.supplyInfo;
+        // 更新全局玩家属性（RoomScene UI 用 gameScene.player 渲染）
+        this.gameScene.player.adjustStat(stat, delta);
+        // 弹文字提示
+        const msg = this.add.text(
+            this.scale.width/2, this.scale.height/2,
+            `${name}health${delta>0?'+':''}${delta}`,
+            { font:'24px Arial', fill:'#ffffff', backgroundColor:'#000000' }
+        )
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(500);
+        this.time.delayedCall(1500, () => msg.destroy());
+        supply.destroy();
+        this.refreshHearts();  // 刷新心形条 :contentReference[oaicite:14]{index=14}:contentReference[oaicite:15]{index=15}
     }
 
 

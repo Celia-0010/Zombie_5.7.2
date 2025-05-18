@@ -1,20 +1,20 @@
-// Door.js
 export default class Door extends Phaser.GameObjects.Zone {
   constructor(scene, tileX, tileY) {
-    // 计算世界坐标 + 区域大小
-    const { x: offsetX, y: offsetY, tileSize } = scene.getMapOffset();
-    const worldX = offsetX + tileX * tileSize;
-    const worldY = offsetY + tileY * tileSize;
-    // Zone 的位置是它的中心，所以加上 tileSize/2
-    super(scene, worldX + tileSize/2, worldY + tileSize/2, tileSize, tileSize);
+    // 直接使用场景的mapX/Y和tileSize计算世界坐标
+    const worldX = scene.mapX + tileX * scene.tileSize + scene.tileSize/2;
+    const worldY = scene.mapY + tileY * scene.tileSize + scene.tileSize/2;
+    
+    super(scene, worldX, worldY, scene.tileSize, scene.tileSize);
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    // 只要当成不可移动的碰撞体
     this.body.setImmovable(true);
     this.body.setAllowGravity(false);
-    // （Zone 默认就是不渲染任何东西）
+    
+    // 保存原始瓦片坐标供调试
+    this.tileX = tileX;
+    this.tileY = tileY;
   }
   
   triggerEnterRoom() {

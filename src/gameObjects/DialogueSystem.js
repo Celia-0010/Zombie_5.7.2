@@ -30,13 +30,16 @@ export default class DialogueSystem {
                 .setOrigin(0.5);
             this.dialogueBox.add(bg);
 
+            // 头像
+            this.createAvatarArea();
+
             // 对话历史显示区域
-            this.dialogueText = this.scene.add.text(-250, -100, '', {
-                font: '16px Arial',
+            this.dialogueText = this.scene.add.text(-180, -120, '', {
+                font: '14px Arial',
                 fill: '#ffffff',
-                wordWrap: { width: 500 },
+                wordWrap: { width: 420 },
                 lineSpacing: 8,
-                padding: { x: 0, y: 100 }
+                padding: { x: 10, y: 100 }
             }).setDepth(1001); // 比背景高一级
             this.dialogueBox.add(this.dialogueText);
 
@@ -54,6 +57,62 @@ export default class DialogueSystem {
             console.error('Failed to create dialogue box:', error);
             throw error;
         }
+    }
+
+    // 新增：创建头像区域
+    createAvatarArea() {
+        // 头像背景框
+        const avatarBg = this.scene.add.rectangle(-240, -100, 100, 100, 0x333333)
+            .setStrokeStyle(2, 0x555555);
+        this.dialogueBox.add(avatarBg);
+
+        // 根据NPC类型加载不同头像
+        let avatarKey = 'default_avatar'; // 默认头像
+        switch(this.npc.name) {
+            case 'doctor':
+                avatarKey = 'doctor_avatar';
+                break;
+            case 'chef':
+                avatarKey = 'chef_avatar';
+                break;
+            case 'police':
+                avatarKey = 'police_avatar';
+                break;
+            case 'technician':
+                avatarKey = 'technician_avatar';
+                break;
+            case 'merchant':
+                avatarKey = 'merchant_avatar';
+                break;
+            case 'gangster':
+                avatarKey = 'gangster_avatar';
+                break;
+        }
+
+        // NPC头像
+        this.npcAvatar = this.scene.add.image(-240, -100, avatarKey)
+            .setDisplaySize(90, 90)
+            .setDepth(1001);
+        this.dialogueBox.add(this.npcAvatar);
+
+        // 玩家头像背景框
+        const playerAvatarBg = this.scene.add.rectangle(-240, 10, 100, 100, 0x333333)
+            .setStrokeStyle(2, 0x555555);
+        this.dialogueBox.add(playerAvatarBg);
+
+        // 玩家头像
+        this.playerAvatar = this.scene.add.image(-240, 10, 'player_avatar')
+            .setDisplaySize(90, 90)
+            .setDepth(1001);
+        this.dialogueBox.add(this.playerAvatar);
+
+        // NPC名称标签
+        const npcNameText = this.scene.add.text(-240, -60, this.npc.name, {
+            font: '18px Arial',
+            fill: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5);
+        this.dialogueBox.add(npcNameText);
     }
 
     createInputField() {
@@ -186,21 +245,21 @@ createButtons() {
         this.closeDialogue();
         
         // 4. 显示帮助成功的提示
-        this.showHelpSuccessMessage();
+        // this.showHelpSuccessMessage();
     }
 
     // 记录玩家帮助了该NPC
     recordNPCHelp() {
-        if (!this.scene.player.helpedNPCs) {
-            this.scene.player.helpedNPCs = [];
-        }
-        
-        // 避免重复记录
-        if (!this.scene.player.helpedNPCs.includes(this.npc.name)) {
-            this.scene.player.helpedNPCs.push(this.npc.name);
-            this.scene.player.reputation += 10; // 每次帮助增加10点声誉
-            console.log(`帮助记录: ${this.npc.name}`);
-        }
+    if (!this.scene.player.helpedNPCs) {
+        this.scene.player.helpedNPCs = [];
+    }
+    
+    // 直接使用npc.name，确保与GameOver检查的名称一致
+    if (!this.scene.player.helpedNPCs.includes(this.npc.name)) {
+        this.scene.player.helpedNPCs.push(this.npc.name);
+        this.scene.player.reputation += 10;
+        console.log(`帮助记录: ${this.npc.name}`);
+    }
     }
 
     // 销毁NPC

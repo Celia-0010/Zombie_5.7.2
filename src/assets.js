@@ -215,8 +215,6 @@ export default {
             frameHeight: 32
             }]
         },
-
-
         liubeiguangmingcheng: {
             key: '6\u500d\u5149\u660e\u57ce',
             args: ['assets/level3/6倍光明城.png', {
@@ -301,8 +299,76 @@ export default {
                 frameHeight: 32
             }]
         },
-
-
+        gasstation: {
+            key: 'jiayouzhanSucaiNewxiao',
+            args: ['assets/indoor/jiayouzhanSucaiNewxiao.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
+        restaurant: {
+            key: 'round1restaurantSucai1',
+            args: ['assets/indoor/round1restaurantSucai1.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
+        library: {
+            key: 'HKUlibrarySucai',
+            args: ['assets/indoor/HKUlibrarySucai.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
+        bar: {
+            key: 'jiubaSucai',
+            args: ['assets/indoor/jiubaSucai.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
+        doctor: {
+            key: 'doctor_avatar',
+            args: ['assets/ui/NPCHead/doctor.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
+        police: {
+            key: 'police_avatar',
+            args: ['assets/ui/NPCHead/police.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
+        technician: {
+            key: 'technician_avatar',
+            args: ['assets/ui/NPCHead/technician.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
+        gangster: {
+            key: 'gangster_avatar',
+            args: ['assets/ui/NPCHead/technician.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
+        chef: {
+            key: 'chef_avatar',
+            args: ['assets/ui/NPCHead/technician.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
+        merchant: {
+            key: 'merchant_avatar',
+            args: ['assets/ui/NPCHead/technician.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
     },
 
 
@@ -364,13 +430,29 @@ export default {
             key: 'level3-map', // 第三个关卡的tilemap
             args: ['assets/level3/zombie_round3.json']
         },
-        indoor1: {
+        room711: {
             key: 'indoor1-map', // 室内地图
             args: ['assets/indoor/round1_711.json'] // 确保路径正确
         },
-        indoor2: {
-            key: 'indoor2-map', // 室内地图
+        hospital: {
+            key: 'hospital', // 室内地图
             args: ['assets/indoor/round2_hospital.json'] // 确保路径正确
+        },
+        restaurant: {
+            key: 'restaurant',
+            args: ['assets/indoor/round1_restaurantNew.json']
+        },
+        library: {
+            key: 'library',
+            args: ['assets/indoor/round2_HKUlibraryNew.json']
+        },
+        gasstation: {
+            key: 'gasstation',
+            args: ['assets/indoor/round2_JiayouNew.json']
+        },
+        bar: {
+            key: 'bar',
+            args: ['assets/indoor/round1_jiubaNewNew.json']
         },
     },
 }

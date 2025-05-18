@@ -4,11 +4,15 @@ import ANIMATION from '../animation.js';
 export default class Enemy extends Phaser.Physics.Arcade.Sprite
 {
     moveSpeed = 400; // time in milliseconds to move from one tile to another
+    chaseSpeed = 1
     frameDuration = 0;
     accumulator = 0;
     direction = { x: 0, y: 0 };
     target = { x: 0, y: 0 };
     targetPrev = { x: 0, y: 0 };
+    path      = [];     // 当前追击路径 (数组: [{x,y}, …])
+    pathIndex = 0;      // 当前走到路径数组的第几格
+    repathCD  = 0;      // 路径重算冷却 (ms)
 
     constructor(scene, x, y)
     {
@@ -36,6 +40,16 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite
     preUpdate (time, delta)
     {
         super.preUpdate(time, delta);
+            // —— 新增：玩家距离检测 —— 
+        const player = this.scene.player;
+        const chaseRadius = 400;                  // 追击距离阈值（像素）
+        if (player) {
+            const dist = Phaser.Math.Distance.Between(this.x, this.y, player.x, player.y);
+            if (dist < chaseRadius) {
+                this.moveTowardsPlayer(player, delta);
+                return;  // 跳过后面的随机巡逻
+            }
+        }
 
         this.accumulator += delta;
 
@@ -164,4 +178,58 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite
             this.target.x = this.mapLeft + (this.mapOffset.tileSize * 0.5);
         }
     }
+    moveTowardsPlayer(player, delta) {
+
+    /* --- 每 600ms 重新规划一次路径 --- */
+    this.repathCD -= delta;
+    if (this.repathCD <= 0 || this.path.length === 0) {
+        this.computePathToPlayer(player);
+        this.repathCD = 600;
+    }
+
+    /* --- 沿路径逐格移动 --- */
+    if (this.path.length) {
+        const next = this.path[this.pathIndex];
+        const targetX = this.scene.mapX + next.x * this.scene.tileSize + this.scene.halfTileSize;
+        const targetY = this.scene.mapY + next.y * this.scene.tileSize + this.scene.halfTileSize;
+
+        const step = this.chaseSpeed;
+        this.x = this.MoveTowards(this.x, targetX, step);
+        this.y = this.MoveTowards(this.y, targetY, step);
+
+        if (Phaser.Math.Distance.Between(this.x, this.y, targetX, targetY) < 1) {
+        this.pathIndex++;
+        if (this.pathIndex >= this.path.length) { this.path = []; }
+        }
+    }
+    }
+
+    /* --- 新增：计算 A* 路径 --- */
+    computePathToPlayer(player) {
+    if (!this.scene.pathfinder) return;
+
+    const tileSize = this.scene.tileSize;
+    const sx = Math.floor((this.x - this.scene.mapX) / tileSize);
+    const sy = Math.floor((this.y - this.scene.mapY) / tileSize);
+    const gx = Math.floor((player.x - this.scene.mapX) / tileSize);
+    const gy = Math.floor((player.y - this.scene.mapY) / tileSize);
+
+    this.scene.pathfinder.findPath(sx, sy, gx, gy, (path) => {
+        if (path && path.length) {
+        /* 舍弃起点格，把剩下的路径记录下来 */
+        this.path = path.slice(1);  // 第一格是自己当前格
+        this.pathIndex = 0;
+        } else {
+        this.path = [];
+        }
+    });
+    this.scene.pathfinder.calculate();  // 必须调用一次
+    }
+
+    MoveTowards(current, target, maxDelta) {
+    if (Math.abs(target - current) <= maxDelta) return target;
+    return current + Math.sign(target - current) * maxDelta;
+    }
+
+
 }

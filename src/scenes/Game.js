@@ -46,6 +46,11 @@ export class Game extends Phaser.Scene
 
         this.initGameUi();
         
+        if (this.currentLevelIndex > 0) {
+           this.startGame()
+           return;
+        }
+
         //按F进入载具
         this.input.keyboard.on('keydown-F', this.handleVehicleToggle, this);
         // ↓↓↓ 在玩家实例位置上，创建一个“停放用”的车辆精灵 ↓↓↓
@@ -56,13 +61,8 @@ export class Game extends Phaser.Scene
         .setDepth(50)
         .setVisible(false);    // ←—— 一定要隐藏
 
-        this.addNPC(10, 3, 'Stranger Doctor', "Next, you'll be playing as a [Mad Apothecary], and you're an NPC in the game Doom RV: Desperate Escape. You have the same skills and effects as him. The skill is [High Healing], which will provide the player with a positive effect: [Health Value] +10 per minute. But you need to hide your identity and pretend you're [Doctor], another NPC. In your interactions with the player, you will need to [hide your identity], request to escape together in an RV, and answer the player's questions. However, you may also trigger the hidden event [Desperate Poisoner], which halves the player's health. So if you reveal your identity, players will refuse to travel with you. However, you will need to reveal some small breaks in the dialog, such as some test tubes in the medical kit in addition to medicines, to make it possible for the player to recognize you. Note that there is no action, demeanor or psychological description. Don't talk too much, and generate only dialogues.");
-        this.addNPC(15, 5, 'Stranger Chef', "you'll be playing as a [Hannibal], and you're an NPC in the game Doom RV: Desperate Escape. You have the same skills and effects as him. The skill is [Mastery of Cooking], which will provide the player with a positive effect: [Stamina] +10 per minute. But you need to hide your identity and pretend you're [Chef], another NPC. However, you may also trigger the hidden event [Human Cuisine], which causes the player to lose a random companion NPC. so if you reveal your identity, the player will refuse to travel with you. In your interactions with the player, you will need to [hide your identity], request to escape together in an RV, and answer the player's questions. However, you need to reveal small cracks in the dialog, such as mentioning that you've found fresh ingredients, or that you can make a gourmet meal out of anything, to make it possible for the player to recognize you. Note that there is no action, demeanor or psychological description. Don't talk too much, and generate only conversations.");
-    
-
-        if (this.currentLevelIndex > 0) {
-           this.startGame()
-    }
+        this.addNPC(10, 3, 'doctor', "Next, you'll be playing as a [Mad Apothecary], and you're an NPC in the game Doom RV: Desperate Escape. You have the same skills and effects as him. The skill is [High Healing], which will provide the player with a positive effect: [Health Value] +10 per minute. But you need to hide your identity and pretend you're [Doctor], another NPC. In your interactions with the player, you will need to [hide your identity], request to escape together in an RV, and answer the player's questions. However, you may also trigger the hidden event [Desperate Poisoner], which halves the player's health. So if you reveal your identity, players will refuse to travel with you. However, you will need to reveal some small breaks in the dialog, such as some test tubes in the medical kit in addition to medicines, to make it possible for the player to recognize you. Note that there is no action, demeanor or psychological description. Don't talk too much, and generate only dialogues.");
+        this.addNPC(15, 5, 'chef', "you'll be playing as a [Hannibal], and you're an NPC in the game Doom RV: Desperate Escape. You have the same skills and effects as him. The skill is [Mastery of Cooking], which will provide the player with a positive effect: [Stamina] +10 per minute. But you need to hide your identity and pretend you're [Chef], another NPC. However, you may also trigger the hidden event [Human Cuisine], which causes the player to lose a random companion NPC. so if you reveal your identity, the player will refuse to travel with you. In your interactions with the player, you will need to [hide your identity], request to escape together in an RV, and answer the player's questions. However, you need to reveal small cracks in the dialog, such as mentioning that you've found fresh ingredients, or that you can make a gourmet meal out of anything, to make it possible for the player to recognize you. Note that there is no action, demeanor or psychological description. Don't talk too much, and generate only conversations.");
     }
 
     update(time, delta) {
@@ -78,12 +78,27 @@ export class Game extends Phaser.Scene
 
         // 检查玩家是否到达地图最右边
         const mapRightEdge = this.mapX + this.mapWidth * this.tileSize;
-        if (this.player.x >= mapRightEdge - this.player.width) {
-            this.loadNextLevel(); // 进入下一关
+        
+        // —— 玩家撞到世界右边界就切关 —— 
+        // 只有当身体右侧与 worldBounds.right 重合（±1px）才切关
+        const worldRight = this.physics.world.bounds.right;
+        if (
+            this.player.body.blocked.right &&
+            Math.abs(this.player.body.right - worldRight) < 1
+        ) {
+            this.loadNextLevel();
         }
+
+
 
         this.npcGroup.getChildren().forEach(npc => {
             npc.update(delta, this.player);
+        });
+
+        this.doorGroup.getChildren().forEach(door => {
+        if (door.prompted && !this.physics.overlap(this.player, door)) {
+            door.prompted = false;
+        }
         });
         
         this.cameras.main.centerOnX(this.player.x);
@@ -96,6 +111,9 @@ export class Game extends Phaser.Scene
             this.GameOver(true); // true表示胜利
             return;
         }
+
+        const savedHelpedNPCs = this.player.helpedNPCs;
+        const savedReputation = this.player.reputation;
 
         // 清理当前关卡
         this.clearCurrentLevel();
@@ -118,8 +136,24 @@ export class Game extends Phaser.Scene
         this.mapX = this.centreX - (this.mapWidth * this.tileSize * 0.5);
         this.mapY = this.centreY - (this.mapHeight * this.tileSize * 0.5);
 
+        // 重新同步物理世界边界到新地图
+        this.physics.world.setBounds(
+            this.mapX,
+            this.mapY,
+            this.mapWidth  * this.tileSize,
+            this.mapHeight * this.tileSize
+        );
+
+
         // 重新初始化地图
         this.initMap();
+        /* —— 新增：换图后重新为新 blockLayers 建 collider —— */
+        this.setupBlockColliders();
+
+        this.pathfinder = new EasyStar.js();
+        this.pathfinder.setGrid(this.navGrid);
+        this.pathfinder.setAcceptableTiles([0]);
+        this.pathfinder.enableDiagonals();
 
         // 将玩家传送到新地图的起始位置
         this.player.setPosition(
@@ -138,8 +172,13 @@ export class Game extends Phaser.Scene
         cursors.up.isDown = false;
         cursors.down.isDown = false;
 
+        this.player.helpedNPCs = savedHelpedNPCs || [];
+        this.player.reputation = savedReputation || 0;
+
         // 重置相机跟随
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+
+        this.generateNPCsForLevel();
     }
 
 
@@ -153,6 +192,9 @@ export class Game extends Phaser.Scene
         this.spawnCounterEnemy = 0;
         this.spawnRateEnemy = 3 * 60;
 
+        this.blockLayers   = [];   // 每关创建后装进所有 building / sidebuilding 图层
+        this.blockColliders = [];  // 存放“玩家 ↔︎ blockLayer” 的 Collider 引用
+
         this.inVehicle = true;
 
         // 关卡配置（每个关卡有不同的 tileId 和地图尺寸）
@@ -165,7 +207,11 @@ export class Game extends Phaser.Scene
                 mapWidth: 40,
                 mapHeight: 20,
                 playerStart: { x: 1, y: 16 },
-                enemyStart: { x: 12, y: 4 }
+                enemyStart: { x: 12, y: 4 },
+                doors: [
+                    { x: 11, y: 13, roomType: 'restaurant'},
+                    { x: 33, y: 13, roomType: 'bar' }
+                ]
             },
             {
                 tilemapKey: 'level2-map',  // 关卡 2
@@ -175,7 +221,11 @@ export class Game extends Phaser.Scene
                 mapWidth: 40,
                 mapHeight: 20,
                 playerStart: { x: 1, y: 16 },
-                enemyStart: { x: 12, y: 4 }
+                enemyStart: { x: 12, y: 4 },
+                doors: [
+                    { x: 22, y: 13, roomType: 'library' },
+                    { x: 25, y: 2, roomType: 'gasstation' }
+                ]
             },
             {
                 tilemapKey: 'level3-map',  // 关卡 3
@@ -185,7 +235,11 @@ export class Game extends Phaser.Scene
                 mapWidth: 40,
                 mapHeight: 20,
                 playerStart: { x: 0, y: 6 },
-                enemyStart: { x: 12, y: 4 }
+                enemyStart: { x: 12, y: 4 },
+                doors: [
+                    { x: 25, y: 2, roomType: 'hospital' },
+                    { x: 33, y: 13 }
+                ]
             }
         ];
 
@@ -201,6 +255,8 @@ export class Game extends Phaser.Scene
         this.eventHistory = [];
 
         this.level = this.levels[this.currentLevelIndex];
+
+        this.popupContainer = null;   // 当前是否有弹窗；null 表示没有
 
         // 随机背景图像生成
         this.tiles = [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 44 ];
@@ -223,6 +279,19 @@ export class Game extends Phaser.Scene
         const W = this.scale.width;
         const H = this.scale.height;
 
+        const screenCenterX = this.cameras.main.width / 2;
+        const screenCenterY = this.cameras.main.height / 2;
+
+        // Create tutorial text
+        this.tutorialText = this.add.text(screenCenterX, screenCenterY, 'Use the arrow ←↑↓→ keys to move.\nClick "F" to get in or out of the vehicle.\nClick on NPCs to engage in conversation.\nMove around and collect necessary supplies.\nMove to the highlighted spots to interact with items/buildings.\nThe game will end when your health runs out.\nBe cautious of zombies that may appear at any time.\nIf you are ready, press "SPACE" to start the game.', {
+            fontFamily: 'Arial Black', fontSize: 16, color: '#f2f2f2',
+            stroke: '#000000', strokeThickness: 5,
+            align: 'center'
+        })
+            .setOrigin(0.5)
+            .setScrollFactor(0)  // 固定位置
+            .setDepth(100);
+        
         // Create game over text
         this.gameOverText = this.add.text(
             W / 2, H / 2,
@@ -336,66 +405,64 @@ export class Game extends Phaser.Scene
 
    /** 弹窗：询问是否进入房间，点击后切换到 RoomScene **/
     showRoomEnterPopup (door) {
-        const W = this.scale.width, H = this.scale.height;
-        this.popupElems = [];  // 新增：存放所有弹窗元素
-                // 先把“对话框底板”放这层
+        if (this.popupElems) return;       // 正在显示弹窗就别再弹
 
-        const bg = this.add.image(W/2, H/2, 'yesno-panel')
-            .setScrollFactor(0)
-            .setDepth(200)
-            .setDisplaySize(400, 240);
+        this.gameStarted = false;          // 冻结世界逻辑
+        this.player.moving = false;
+        this.player.body.setVelocity(0, 0);
+        this.player.target.set(this.player.x, this.player.y);
+        this.input.keyboard.enabled = false;
+        ['left','right','up','down'].forEach(k => this.cursors[k].reset());
 
-        const txt = this.add.text(W/2, H/2 - 20,
-                        'Do you want to enter?',
-                        { font:'26px Minecraft', fill:'#f6ecdc', align:'center' ,
-                            // 阴影相关
-                            shadow: {
-                                offsetX: 3,        // 阴影 X 偏移
-                                offsetY: 5,        // 阴影 Y 偏移
-                                color:   '#000000',// 阴影颜色
-                                blur:    5,        // 阴影高斯模糊半径
-                                stroke:  true,     // 阴影是否作用在描边上
-                                fill:    true      // 阴影是否作用在填充上
-                            }})
+        const W = this.scale.width;
+        const H = this.scale.height;
 
-                        .setOrigin(0.5).setScrollFactor(0).setDepth(200);
-        const yes = this.add.text(W/2 - 70, H/2 + 74, 'Yes',
-                        { font:'16px Minecraft', fill:'#e5c6a4'})
-                        .setOrigin(0.5).setInteractive().setScrollFactor(0).setDepth(200);
-        const no  = this.add.text(W/2 + 70, H/2 + 74, 'No',
-                        { font:'16px Minecraft', fill:'#e5c6a4'})
-                        .setOrigin(0.5).setInteractive().setScrollFactor(0).setDepth(200);
-       
+        /* —— 单独创建四个精灵 —— */
+        const bg  = this.add.image(W/2, H/2, 'yesno-panel')
+                    .setDepth(200).setScrollFactor(0).setDisplaySize(400,240);
 
-        this.popupElems.push(bg);
-        this.popupElems.push(txt);
-        this.popupElems.push(yes);
-        this.popupElems.push(no);
-        
+        const txt = this.add.text(W/2, H/2-20, 'Do you want to enter?',
+                    { font:'26px Minecraft', fill:'#f6ecdc', align:'center' })
+                    .setOrigin(0.5).setDepth(200).setScrollFactor(0);
+
+        const yes = this.add.text(W/2-70, H/2+74, 'Yes',
+                    { font:'16px Minecraft', fill:'#e5c6a4' })
+                    .setOrigin(0.5).setDepth(210).setScrollFactor(0)
+                    .setInteractive({ useHandCursor:true });
+
+        const no  = this.add.text(W/2+70, H/2+74, 'No',
+                    { font:'16px Minecraft', fill:'#e5c6a4' })
+                    .setOrigin(0.5).setDepth(210).setScrollFactor(0)
+                    .setInteractive({ useHandCursor:true });
+
+        /* —— 用数组统一记录，便于销毁 —— */
+        this.popupElems = [ bg, txt, yes, no ];
+
+        /* ---- Yes：进房 ---- */
         yes.once('pointerdown', () => {
-            this.popupElems.forEach(o=>o.destroy());
-            this.popupElems = null;
-
-            // 隐藏主场景
-            this.scene.pause('Game');
+            this.closePopup();
             this.scene.setVisible(false, 'Game');
-
-            // door 是函数参数，里面挂了 roomType / targetScene 等信息
-            const roomType = door.roomType || 'default';     // ← 你的门上写的是 door.roomType
-            this.scene.launch('RoomScene', { gameScene: this, roomType });
+            this.scene.launch('RoomScene',
+                { gameScene:this, roomType: door.roomType || 'default' });
         });
 
-
+        /* ---- No：关闭弹窗 ---- */
         no.once('pointerdown', () => {
-            // 先判断是否存在
-            if (this.popupElems) {
-                this.popupElems.forEach(o => o.destroy());
-                this.popupElems = null;
-            }
-            // 让门可以再次触发
-            door.prompted = false;
+            this.closePopup();
+            this.gameStarted = true;
+            this.input.keyboard.enabled = true;
         });
     }
+
+
+    closePopup () {
+        if (this.popupElems) {
+            this.popupElems.forEach(o => o.destroy());
+            this.popupElems = null;
+        }
+    }
+
+
 
        /** 触发一次随机事件：抽取、应用到 this.health/hunger/fuel、记录历史并弹出提示 **/
     triggerRandomEvent() {
@@ -516,32 +583,31 @@ export class Game extends Phaser.Scene
 
         // 只在玩家与门相邻一格时才触发
         this.physics.add.overlap(
-        this.player,
-        this.doorGroup,
-        (player, door) => {
-            if (!door.prompted) {
-            door.prompted = true;
-            door.triggerEnterRoom();
-            }
-        },
-        (player, door) => {
-            const mapOffset = this.mapX; 
-            const tileSize  = this.tileSize;
-            const px = Math.round((player.x - mapOffset) / tileSize);
-            const py = Math.round((player.y - this.mapY) / tileSize);
-            const dx = Math.round((door.x   - mapOffset) / tileSize);
-            const dy = Math.round((door.y   - this.mapY) / tileSize);
-            return (Math.abs(px - dx) + Math.abs(py - dy)) === 1;
+            this.player,
+            this.doorGroup,
+
+            /* collideCallback —— 进入相邻格就弹窗一次 */
+            (player, door) => {
+                if (!door.prompted) {
+                    door.prompted = true;
+                    door.triggerEnterRoom();          // ← showRoomEnterPopup 在这里被调用
+                }
             },
-        null,   // 不再使用自定义过滤
-        this
+
+            /* processCallback —— 仅当玩家与门的曼哈顿距离 = 1 */
+            (player, door) => {
+                const tileSize = this.tileSize;
+                const px = Math.round((player.x - this.mapX) / tileSize);
+                const py = Math.round((player.y - this.mapY) / tileSize);
+                const dx = Math.round((door.x   - this.mapX) / tileSize);
+                const dy = Math.round((door.y   - this.mapY) / tileSize);
+                return (Math.abs(px - dx) + Math.abs(py - dy)) === 1;
+            },
+
+            this                                      // context
         );
-            // —— 新增：让玩家跟 building/sidebuilding 碰撞 —— 
-        if (this.blockLayerList) {
-           this.blockLayerList.forEach(layer => {
-             this.physics.add.collider(this.player, layer);
-           });
-         }
+        this.setupBlockColliders(); 
+
         
 
     }
@@ -549,6 +615,7 @@ export class Game extends Phaser.Scene
     initPlayer ()
     {
         this.player = new Player(this, this.playerStart.x, this.playerStart.y);
+        this.player.gameScene = this;  // 传递当前场景引用
     }
 
     initInput ()
@@ -569,7 +636,9 @@ export class Game extends Phaser.Scene
 
     // create tile map data
     initMap ()
-    {
+    {   
+        this.blockLayers = [];
+         this.blockColliders = []
         /* ───────── 0. 读取本关配置 ───────── */
         const cur = this.levels[this.currentLevelIndex];
         // —— 新增：清掉上一次关卡遗留的 block 层 —— 
@@ -606,48 +675,75 @@ export class Game extends Phaser.Scene
             '\u5149\u6807',
         ];
 
-    layerNames.forEach(name => {
-        if (!this.map.layers.some(l => l.name === name)) return;
+        layerNames.forEach(name => {
+            if (!this.map.layers.some(l => l.name === name)) return;
 
-        const layer = this.map.createLayer(name, tilesets, this.mapX, this.mapY);
-        if (!layer) return;
-        this.levelLayerGroup.add(layer);
+            const layer = this.map.createLayer(name, tilesets, this.mapX, this.mapY);
+            if (!layer) return;
+            this.levelLayerGroup.add(layer);
 
-        // 把“墙”瓦片设为碰撞
-        if (this.tileIds?.walls) {
-            layer.setCollision(this.tileIds.walls);
-        }
+            // 把“墙”瓦片设为碰撞
+            if (this.tileIds?.walls) {
+                layer.setCollision(this.tileIds.walls);
+            }
 
-        // —— 新增：building / sidebuilding 碰撞 —— 
-        if (name === 'building' || name === 'sidebuilding') {
-            layer.setCollisionByExclusion([0]);
-            if (!this.blockLayerList) this.blockLayerList = [];
-            this.blockLayerList.push(layer);
-        }  // ← 结束 building/sidebuilding 的 if
+            // —— 新增：building / sidebuilding 碰撞 —— 
+            if (name === 'building' || name === 'sidebuilding') {
 
-        const door711 = new Door(this, 14, 13);
-        door711.roomType = 'indoor1';            // 写入房间类型
-        this.doorGroup.add(door711);
+                // ① 先把所有建筑瓦片设为可碰撞
+                layer.setCollisionByExclusion([-1, 0]);
 
-        // 第 2 扇门：Hospital，地图格子 (6,5)
-        const doorHos = new Door(this, 33, 13);
-        doorHos.roomType = 'indoor2';
-        this.doorGroup.add(doorHos);
+                // ② 再把“贴着空气”的外圈瓦片取消碰撞 → 等效向内缩 1 格
+                const w = layer.layer.width;
+                const h = layer.layer.height;
+                for (let ty = 0; ty < h; ty++) {
+                    for (let tx = 0; tx < w; tx++) {
+                    const t = layer.getTileAt(tx, ty);
+                    if (!t || t.index === -1 || t.index === 0) continue;      // 空格子跳过
 
-        // “光标”层 → Door 逻辑
-        if (name === '\u5149\u6807') {
-            for (let y = 0; y < this.mapHeight; y++) {
-                for (let x = 0; x < this.mapWidth; x++) {
-                    const tile = layer.getTileAt(x, y);
-                    if (tile && tile.index !== 0) {
-                        tile.index = -1;
-                        this.addDoor(x, y);
+                    const onEdge = [[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{
+                        const nt = layer.getTileAt(tx+dx, ty+dy);
+                        return (!nt || nt.index === -1 || nt.index === 0);       // 旁边是空气
+                    });
+
+                    if (onEdge) t.setCollision(false,false,false,false);      // 边缘瓦片可通行
                     }
                 }
-            }
-        }  // ← 结束 光标 的 if
 
-    });  // ← 结束 forEach 回调
+                // 保存以便 Physics 添加 collider（车、人统一阻挡）
+                this.blockLayers.push(layer);
+                }
+
+            const currentLevel = this.levels[this.currentLevelIndex];
+            
+            if (currentLevel.doors) {
+                currentLevel.doors.forEach(doorConfig => {
+                    // 直接传递瓦片坐标，让Door类自己转换
+                    const door = new Door(this, doorConfig.x, doorConfig.y);
+                    door.roomType = doorConfig.roomType;
+                    this.doorGroup.add(door);
+                    
+                    // 调试输出
+                    console.log(`创建门在 瓦片(${doorConfig.x},${doorConfig.y}) -> 世界(${door.x},${door.y})`);
+                });
+            }
+
+            // “光标”层 → Door 逻辑
+            if (name === '\u5149\u6807') {
+                for (let y = 0; y < this.mapHeight; y++) {
+                    for (let x = 0; x < this.mapWidth; x++) {
+                        const tile = layer.getTileAt(x, y);
+                        if (tile && tile.index !== 0) {
+                            tile.index = -1;
+                            this.addDoor(x, y);
+                        }
+                    }
+                }
+            }  // ← 结束 光标 的 if
+
+        }
+        
+        );  // ← 结束 forEach 回调
 
 
 
@@ -669,12 +765,41 @@ export class Game extends Phaser.Scene
             if (!tile) continue;
         }
     }
+
+            /* —— 为 A* 生成 walkability 网格 —— */
+        this.navGrid = [];
+        for (let ty = 0; ty < this.mapHeight; ty++) {
+        this.navGrid[ty] = [];
+        for (let tx = 0; tx < this.mapWidth; tx++) {
+            // 如果任何阻挡层在该 (tx,ty) 有 collides，就记 1（不可走），否则 0
+            let blocked = false;
+
+            const tMain = this.levelLayer.getTileAt(tx, ty);
+            if (tMain && tMain.collides) blocked = true;
+
+            if (!blocked) {
+            for (const bl of this.blockLayers) {
+                const bt = bl.getTileAt(tx, ty);
+                if (bt && bt.collides) { blocked = true; break; }
+            }
+            }
+            this.navGrid[ty][tx] = blocked ? 1 : 0;
+        }
+        }
+
+        /* 把网格挂到场景，Enemy 可以直接用 */
+        this.pathfinder = new EasyStar.js();           // ⇠ 使用易上手的 A* 库
+        this.pathfinder.setGrid(this.navGrid);
+        this.pathfinder.setAcceptableTiles([0]);       // 0 = 可走
+        this.pathfinder.enableDiagonals();             // 允许斜向（可选）
+
     }
 
 
     startGame ()
     {
         this.gameStarted = true;
+        this.tutorialText.setVisible(false);
     }
 
     addEnemy ()
@@ -700,11 +825,34 @@ export class Game extends Phaser.Scene
 
     // 在Game类中修改addNPC方法
     addNPC(x, y, name, dialoguePrompt) {
-        const npc = new NPC(this, x, y, name, dialoguePrompt);
-        this.npcGroup.add(npc);
+        // 将瓦片坐标转换为世界坐标
+        const worldX = this.mapX + (x * this.tileSize) + (this.tileSize / 2);
+        const worldY = this.mapY + (y * this.tileSize) + (this.tileSize / 2);
         
-        // 不再在这里创建对话系统
+        const npc = new NPC(this, worldX, worldY, name, dialoguePrompt);
+        this.npcGroup.add(npc);
         return npc;
+    }
+    
+
+    // 新增方法：根据当前关卡生成NPC
+    generateNPCsForLevel() {
+        // 先清空现有的NPC
+        this.npcGroup.clear(true, true);
+
+        // 根据当前关卡生成NPC
+        switch(this.currentLevelIndex) {
+            case 1:
+                this.addNPC(16, 6, 'technician', "Next, you will play the role of a Subway Technician, a skilled worker who used to maintain the underground train systems in Hong Kong. Calm, practical, and loyal, you have extensive knowledge of the city’s underground infrastructure. As the player interacts with the Subway Technician, you will help them navigate through the underground metro tunnels to avoid zombies and dangerous streets above. You will also help repair the player's vehicle and offer advice on how to conserve fuel and resources.");
+                this.addNPC(8, 5, 'police', "Next, you will play the role of a Police Captain, a highly disciplined and strategic individual who once served in Hong Kong's police force. As the player interacts with you, you will provide leadership and tactical advice during attacks, ensuring the team’s safety. You are authoritative, level-headed, and always ready to make tough decisions. Guide the player through dangerous situations and help them stay organized in their journey toward safety.");
+                break;
+            case 2:
+                this.addNPC(5, 3, 'merchant', "Next, you will play the role of a Traitor Merchant, a cunning and self-serving individual who once ran a small business in Hong Kong. You are opportunistic, deceitful, and will do whatever it takes to secure your survival. As the player interacts with you, you will offer goods in exchange for their resources, but the prices will always be unfair. You may also attempt to steal from the player or manipulate them into making decisions that benefit you. However, your knowledge of the world’s remaining resources could still prove useful if the player is careful.");
+                this.addNPC(8, 8, 'gangster', "Next, you will play the role of a Violent Gangster, a brutal and ruthless figure who once ran with Hong Kong’s underground gangs. You are aggressive, untrustworthy, and use force to get what you want. As the player interacts with you, you may offer help in the form of protection or extra resources, but only at the cost of your violent demands. You will push the player to make morally questionable decisions, and your actions can lead to conflict within the group or even betrayal.");
+                break; 
+        }
+        
+        console.log(`Level ${this.currentLevelIndex+1} NPCs generated:`, this.npcGroup.getChildren().length);
     }
 
     removeItem (item)
@@ -726,11 +874,24 @@ export class Game extends Phaser.Scene
             height: this.mapHeight
         };
         }
-    getTileAt(worldX, worldY) {
-        const tile = this.levelLayer.getTileAtWorldXY(worldX, worldY, true);
-        // tile.index 在 this.tileIds.walls 数组里，返回它的下标；否则返回 -1
-        return tile ? this.tileIds.walls.indexOf(tile.index) : -1;
+
+        /** 返回 0 → 被阻挡；返回 -1 → 可通行 */
+        getTileAt (worldX, worldY) {
+
+        /* ① 主层 */
+        const t = this.levelLayer.getTileAtWorldXY(worldX, worldY, true);
+        if (t && t.collides) return 0;
+
+        /* ② building / sidebuilding */
+        for (const bl of this.blockLayers) {
+            const tile = bl.getTileAtWorldXY(worldX, worldY, true);
+            if (tile && tile.collides) return 0;
         }
+        return -1;          // 没命中，说明格子可走
+        }
+
+
+
 
     destroyEnemies ()
     {
@@ -773,45 +934,125 @@ export class Game extends Phaser.Scene
     }
 
 
-      GameOver(isWin = false) {
+    GameOver(isWin = false) {
         this.gameStarted = false;
         
         if (isWin) {
-            // 根据帮助的NPC数量决定结局
-            const totalHelped = this.player.helpedNPCs?.length || 0;
+            // console.log('当前帮助的NPC列表:', this.player.helpedNPCs); // 调试输出
+            // 获取救助的NPC信息
+            const totalHelped = this.player.helpedNPCs.length;
+            const helpedTypes = {
+                doctor: this.player.helpedNPCs.filter(n => n === 'doctor').length,
+                police: this.player.helpedNPCs.filter(n => n === 'police').length,
+                merchant: this.player.helpedNPCs.filter(n => n === 'merchant').length,
+                chef: this.player.helpedNPCs.filter(n => n === 'chef').length,
+                technician: this.player.helpedNPCs.filter(n => n === 'technician').length,
+                gangster: this.player.helpedNPCs.filter(n => n === 'gangster').length
+            };
+
+            // 判断结局类型
             let endingText = '';
             let endingColor = '#FFFFFF';
-            
-            if (totalHelped >= 3) {
-                endingText = 'You saved all people!';
+            let endingTitle = '';
+
+            // 结局1: 救助所有NPC (完美结局)
+            if (totalHelped >= 4 && helpedTypes.doctor && helpedTypes.police && helpedTypes.technician && !helpedTypes.merchant ) {
+                endingTitle = 'Perfect Ending: The Dawn of Hope';
+                endingText = "You and all the kind-hearted survivors successfully escaped the death city.\nThe doctor invented a potion at the shelter, restoring the city's health.\nYou built a new community, becoming a beacon of hope in the apocalypse.";
                 endingColor = '#FFD700'; // 金色
-            } else if (totalHelped >= 1) {
-                endingText = 'The RV stalls at an abandoned airstrip, fuel exhausted.\nAs the undead horde fades behind you, hope turns to dread: Hannibal awaits in the back, cleaning a bone-handled knife under his bloodied apron. "The pharmacist’s liver complemented black garlic... like the investigator’s,"\n he muses innocently.The blade mirrors your terror as wet chewing echoes in the dark.';
+            }
+            // 结局2: 救助医生和警察 (好结局)
+            else if (helpedTypes.doctor && helpedTypes.police) {
+                endingTitle = 'Good Ending: Order and Healing';
+                endingText = "With the help of the doctor and the police, you successfully escaped.\nThough the RV was slightly damaged, the doctor's medical knowledge and the police's tactical\ncommand kept you safe as you reached the shelter.";
                 endingColor = '#00FF00'; // 绿色
-            } else {
-                endingText = 'Normal Ending: You escape, one and alone...';
+            }
+            // 结局3: 救助医生和技师 (技术结局)
+            else if (helpedTypes.doctor && helpedTypes.technician) {
+                endingTitle = 'Mechanics and Medicine';
+                endingText = "The doctor's medical knowledge and the technician's technical skills helped you\nbarely keep the RV running. Though a lack of protection led to some loss of supplies,\nthe power of technology guided you to a safe refuge.";
+                endingColor = '#ADD8E6'; // 浅蓝色
+            }
+            // 结局4: 只救助警察 (军事结局)
+            else if (helpedTypes.police) {
+                endingTitle = 'Two Lonly Wolves';
+                endingText = "Despite the lack of medical support, which left you battered, the police's assistance\nand the combat skills they taught you turned you into a lone wolf survivor\nin the apocalypse.";
+                endingColor = '#808080'; // 灰色
+            }
+            // 结局5: 救助了危险NPC (背叛结局)
+            else if (helpedTypes.chef && !helpedTypes.police) {
+                endingTitle = 'Betrayal: A Fatal Mistake';
+                endingText = 'You horrifiedly discover that, aside from the chef, everyone else is bloodied and\nlying on the RV, while the chef stands motionless, staring at you\nwith a kitchen knife in hand...';
+                endingColor = '#FF0000'; // 红色
+            }
+            // 结局6: 救助了厨师和警察 (平安结局)
+            else if (helpedTypes.chef && helpedTypes.police) {
+                endingTitle = 'Safe Ending: Protection and Balance';
+                endingText = 'With the protection of the police,\nyou successfully left the death city.\nNothing happened on the road...';
+                endingColor = '#00BFFF'; // 深天蓝色
+            }
+            // 结局7: 救助医生但没有商人 (药剂结局)
+            else if (helpedTypes.doctor && !helpedTypes.merchant) {
+                endingTitle = 'Potion Ending: Saving the World';
+                endingText = "The doctor's medical knowledge allowed you to invent a potion that saved the world,\nhelping survivors regain their health. Ultimately,\nyou established a new order at the shelter.";
+                endingColor = '#32CD32'; // 石榴红
+            }
+            // 结局8: 救助医生和商人 (背叛结局)
+            else if (helpedTypes.doctor && helpedTypes.merchant) {
+                endingTitle = 'Betrayal: No Hope';
+                endingText = "The merchant made off with all the money from the RV,\npreventing the doctor from creating the potion. Your hopes were shattered,\nand the merchant's greed plunged you into despair.";
+                endingColor = '#FF4500'; // 橙红色
+            }
+            // 结局9: 独自逃生 (孤独结局)
+            else {
+                endingTitle = 'Lonely Ending: One Survivor';
+                endingText = "You chose not to trust anyone and drove the RV away on your own.\nAfter running out of fuel, you were stranded on an abandoned highway.\nSolitude and despair slowly consumed your sanity...\nAt least, you’re still alive.";
                 endingColor = '#FFFFFF'; // 白色
             }
-            
             // 显示统计信息
-            const statsText = `Survival: ${totalHelped}\nKindness: ${this.player.reputation}`;
+            const statsText = `救助人数: ${totalHelped}\n声誉值: ${this.player.reputation}\n\n医生: ${helpedTypes.doctor}\n警察: ${helpedTypes.police}\n技师: ${helpedTypes.technician}\n危险人物: ${helpedTypes.chef + helpedTypes.gangster}`;
             
             this.gameOverText
-                .setFont('Zombie')      // ★ 统一设置字体
+                .setFont('Zombie')
                 .setText([
+                    endingTitle,
                     '',
                     endingText,
                     '',
                     statsText
                 ])
                 .setColor(endingColor)
-                .setFontSize(20);
+                .setFontSize(12)
+                .setStroke('#222222', 3);
             
         } else {
             this.gameOverText.setText('Game Over')
                 .setColor('#FF0000').setFont('Zombie').setFontSize('30pt');
         }
         
-        this.gameOverText.setVisible(true);
+    this.gameOverText.setVisible(true);
+        }
+
+        /** 重新为 blockLayers 和玩家建立碰撞；先移除旧的，再添加新的 */
+        setupBlockColliders () {
+
+            /* 1. 清掉上一关 / 上一次重建留下的 collider */
+            this.blockColliders.forEach(c => this.physics.world.removeCollider(c));
+            this.blockColliders.length = 0;
+
+            /* 2. 给当前关卡的每个 blockLayer 建 collider */
+            this.blockLayers.forEach(layer => {
+                const col = this.physics.add.collider(this.player, layer);
+                this.blockColliders.push(col);
+
+                if (this.enemyGroup) {
+                    const ec = this.physics.add.collider(this.enemyGroup, layer);
+                    this.blockColliders.push(ec);
+                }
+                if (this.npcGroup) {
+                    const nc = this.physics.add.collider(this.npcGroup, layer);
+                    this.blockColliders.push(nc);
+                }
+            });
     }
 }
