@@ -54,8 +54,7 @@ export class RoomScene extends Phaser.Scene {
             this.sound.play(this.backgroundMusic, { loop: true });
         }
 
-        //触发随机事件然后更新属性
-        this.triggerRandomEvent();
+
         this.refreshHearts();
 
         this.setupBlockColliders(); // 初始化碰撞系统
@@ -327,6 +326,15 @@ export class RoomScene extends Phaser.Scene {
         const stats = [ 'health', 'hunger', 'fuel' ];
         this.heartGroups = {};
 
+                        // 新增退出提示 (英文版)
+        this.exitText = this.add.text(W/2-270, H/2-150, 'Press ESC to exit the room', {
+            font: '16px Minecraft',
+            fill: '#ffffff',
+            padding: { x: 5, y: 5 }
+        })
+        .setScrollFactor(0)  // 固定位置
+        .setDepth(1000);     // 确保显示在最上层
+
         stats.forEach((stat, i) => {
             // 为每个属性新建一个数组，用来保存这一行所有的心形精灵
             this.heartGroups[stat] = [];
@@ -386,23 +394,164 @@ export class RoomScene extends Phaser.Scene {
     }
 
     /** 碰到物资点，调整对应属性、弹窗提示并销毁物资 */
+/** 碰到物资点，触发房间类型事件 */
     onSupplyCollision(player, supply) {
-        const { name, stat, delta } = supply.supplyInfo;
-        // 更新全局玩家属性（RoomScene UI 用 gameScene.player 渲染）
-        this.gameScene.player.adjustStat(stat, delta);
-        // 弹文字提示
+        // 根据房间类型获取事件列表
+        const roomEvents = this.getRoomEvents();
+        const evt = Phaser.Math.RND.pick(roomEvents);
+
+        const displayConfig = {
+        showDuration: 3500,  // 总显示时间增加到3.5秒
+        fadeInDuration: 300, // 入场动画保持0.3秒
+        fadeOutDuration: 500 // 淡出动画延长到0.5秒
+            };
+        
+        // 应用效果
+        Object.entries(evt.effect).forEach(([stat, delta]) => {
+            this.gameScene.player[stat] = Phaser.Math.Clamp(
+                this.gameScene.player[stat] + delta,
+                0,
+                100
+            );
+        });
+        const panel = this.add.image(
+            this.scale.width/2,
+            this.scale.height/2,
+            'result' // 确保在assets.js中预加载的UI图片
+        )
+        .setScrollFactor(0)
+        .setDepth(490)
+        .setScale(0.8);
+
+        // 显示事件提示
         const msg = this.add.text(
             this.scale.width/2, this.scale.height/2,
-            `${name}health${delta>0?'+':''}${delta}`,
-            { font:'24px Arial', fill:'#ffffff', backgroundColor:'#000000' }
+            evt.text,
+            { font:'16px Minecraft', fill:'#ffffff' ,wordWrap: { width: panel.displayWidth - 80 }}
         )
         .setOrigin(0.5)
         .setScrollFactor(0)
         .setDepth(500);
-        this.time.delayedCall(1500, () => msg.destroy());
+        
+        this.tweens.add({
+            targets: [panel, msg],
+            y: this.scale.height/2 - 50, // 上移50px
+            alpha: { from: 0, to: 1 },
+            scale: { from: 0.5, to: 1 },
+            duration: 300,
+            ease: 'Back.out'
+        });
+
+        // 自动销毁
+        this.time.delayedCall(displayConfig.showDuration, () => {
+            this.tweens.add({
+                targets: [panel, msg],
+                alpha: 0,
+                duration: displayConfig.fadeOutDuration,
+                ease: 'Sine.easeIn',
+                onComplete: () => {
+                    panel.destroy();
+                    msg.destroy();
+                }
+            });
+        });
+
         supply.destroy();
-        this.refreshHearts();  // 刷新心形条 :contentReference[oaicite:14]{index=14}:contentReference[oaicite:15]{index=15}
+        this.refreshHearts();
     }
+
+    // 2. 更新获取房间事件的方法（全英文版）
+    getRoomEvents() {
+        switch(this.roomType) {
+            case 'restaurant':
+                return [
+                    { 
+                        text: "Found fresh ingredients! Health +15", 
+                        effect: { health: +15 } 
+                    },
+                    { 
+                        text: "Food poisoning from spoiled meat! Health -20", 
+                        effect: { health: -20 } 
+                    },
+                    { 
+                        text: "Emergency fuel storage discovered! Fuel +10", 
+                        effect: { fuel: +10 } 
+                    }
+                ];
+            case 'hospital':
+                return [
+                    { 
+                        text: "Acquired sterile medical supplies! Health +25", 
+                        effect: { health: +25 } 
+                    },
+                    { 
+                        text: "Accidentally triggered biohazard alarm! Health -15", 
+                        effect: { health: -15 } 
+                    },
+                    { 
+                        text: "Found nutritional IV drips! Hunger +10", 
+                        effect: { hunger: +10 } 
+                    }
+                ];
+            case 'gasstation':
+                return [
+                    { 
+                        text: "Successfully refueled! Fuel +30", 
+                        effect: { fuel: +30 } 
+                    },
+                    { 
+                        text: "Gasoline leak caused explosion! Health -25", 
+                        effect: { health: -25 } 
+                    },
+                    { 
+                        text: "Looted convenience store! Hunger +15", 
+                        effect: { hunger: +15 } 
+                    }
+                ];
+            case 'library':
+                return [
+                    { 
+                        text: "Studied survival guides! Hunger +20", 
+                        effect: { hunger: +20 } 
+                    },
+                    { 
+                        text: "Collapsed bookshelf caused injury! Health -10", 
+                        effect: { health: -10 } 
+                    },
+                    { 
+                        text: "Found hidden medicine stash! Health +15", 
+                        effect: { health: +15 } 
+                    }
+                ];
+            case 'bar':
+                return [
+                    { 
+                        text: "Consumed high-calorie cocktails! Hunger +25", 
+                        effect: { hunger: +25 } 
+                    },
+                    { 
+                        text: "Alcohol poisoning! Health -15", 
+                        effect: { health: -15 } 
+                    },
+                    { 
+                        text: "Found backup generator fuel! Fuel +20", 
+                        effect: { fuel: +20 } 
+                    }
+                ];
+            default:
+                return [
+                    { 
+                        text: "Basic supplies found! All stats +10", 
+                        effect: { health: +10, hunger: +10, fuel: +10 } 
+                    },
+                    { 
+                        text: "Rat infestation! Health -5", 
+                        effect: { health: -5 } 
+                    }
+                ];
+        }
+    }
+
 
 
     refreshHearts() {
@@ -425,7 +574,7 @@ export class RoomScene extends Phaser.Scene {
         }
 
     spawnSupplies() {
-        const count = Phaser.Math.Between(1, 3);
+        const count = Phaser.Math.Between(1, 5);
         for (let i = 0; i < count; i++) {
         const x = Phaser.Math.Between(1, this.mapWidth - 2);
         const y = Phaser.Math.Between(1, this.mapHeight - 2);

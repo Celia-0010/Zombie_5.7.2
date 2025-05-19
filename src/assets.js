@@ -369,6 +369,13 @@ export default {
                 frameHeight: 32
             }]
         },
+        player: {
+            key: 'player_avatar',
+            args: ['assets/ui/NPCHead/player.png',{
+                frameWidth: 32,
+                frameHeight: 32
+            }]
+        },
     },
 
 
@@ -410,8 +417,8 @@ export default {
         tiles:{
             key:'tiles',
             args: ['assets/ui/coins.png', {
-                frameWidth: 140,
-                frameHeight: 140
+                frameWidth: 32,
+                frameHeight: 32
         }]
         },
         

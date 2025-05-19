@@ -28,14 +28,15 @@ export default class DialogueSystem {
             const bg = this.scene.add.rectangle(0, 0, 600, 350, 0x222222, 0.9)
                 .setStrokeStyle(2, 0xffffff)
                 .setOrigin(0.5);
+
             this.dialogueBox.add(bg);
 
             // 头像
             this.createAvatarArea();
 
             // 对话历史显示区域
-            this.dialogueText = this.scene.add.text(-180, -120, '', {
-                font: '14px Arial',
+            this.dialogueText = this.scene.add.text(-190, -40, '', {
+                font: '16px Minecraft',
                 fill: '#ffffff',
                 wordWrap: { width: 420 },
                 lineSpacing: 8,
@@ -108,7 +109,7 @@ export default class DialogueSystem {
 
         // NPC名称标签
         const npcNameText = this.scene.add.text(-240, -60, this.npc.name, {
-            font: '18px Arial',
+            font: '26px Minecraft',
             fill: '#ffffff',
             align: 'center'
         }).setOrigin(0.5);
@@ -123,7 +124,7 @@ export default class DialogueSystem {
 
         // 实际输入框（使用DOM元素）
         const style = {
-            font: '16px Arial',
+            font: '26px Minecraft',
             color: '#ffffff',
             backgroundColor: '#333333',
             padding: '8px',
@@ -164,7 +165,7 @@ export default class DialogueSystem {
         this.dialogueBox.add(sendButton);
 
         const sendText = this.scene.add.text(220, 120, 'Send', {
-            font: '18px Arial',
+            font: '26px Minecraft',
             fill: '#ffffff'
         }).setOrigin(0.5);
         this.dialogueBox.add(sendText);
@@ -182,7 +183,7 @@ export default class DialogueSystem {
         this.dialogueBox.add(closeButton);
 
         const closeText = this.scene.add.text(250, -170, 'X', {
-            font: '18px Arial',
+            font: '26px Minecraft',
             fill: '#ffffff'
         }).setOrigin(0.5);
         this.dialogueBox.add(closeText);
@@ -195,14 +196,14 @@ export default class DialogueSystem {
     // 创建帮助和取消按钮
 createButtons() {
     // Help button
-    const helpButton = this.scene.add.image(-180, 80, 'button') // Using 'button' key for help button
+    const helpButton = this.scene.add.image(-140, 60, 'button') // Using 'button' key for help button
         .setOrigin(0.5)
         .setInteractive()
         .setDisplaySize(80, 40);
     this.dialogueBox.add(helpButton);
 
-    const helpText = this.scene.add.text(-180, 80, 'Help', {
-        font: '18px Arial',
+    const helpText = this.scene.add.text(-140, 60, 'Help', {
+        font:'16px Minecraft',
         fill: '#ffffff'
     }).setOrigin(0.5);
     this.dialogueBox.add(helpText);
@@ -212,14 +213,15 @@ createButtons() {
     });
 
     // Reject button
-    const cancelButton = this.scene.add.image(-100, 80, 'button') // Using 'button' key for reject button
+    const cancelButton = this.scene.add.image(-60,60, 'button') // Using 'button' key for reject button
         .setOrigin(0.5)
         .setInteractive()
         .setDisplaySize(80, 40);
     this.dialogueBox.add(cancelButton);
 
-    const cancelText = this.scene.add.text(-100, 80, 'Reject', {
-        font: '18px Arial',
+    const cancelText = this.scene.add.text(-60, 60, 'Reject', {
+        font: '16px Minecraft',
+        fontSize: '8px',
         fill: '#ffffff'
     }).setOrigin(0.5);
     this.dialogueBox.add(cancelText);

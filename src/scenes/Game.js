@@ -445,7 +445,7 @@ export class Game extends Phaser.Scene
             this.scene.launch('RoomScene',
                 { gameScene:this, roomType: door.roomType || 'default' });
         });
-
+        
         /* ---- No：关闭弹窗 ---- */
         no.once('pointerdown', () => {
             this.closePopup();

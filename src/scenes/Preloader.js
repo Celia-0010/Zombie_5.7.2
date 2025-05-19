@@ -53,6 +53,8 @@ export class Preloader extends Phaser.Scene {
         this.load.image('hp', 'assets/ui/hp.png');
         this.load.image('blood', 'assets/ui/blood.png');
         this.load.image('tips', 'assets/ui/tips.png');
+        this.load.image('dialog', 'assets/ui/dialog.png');
+        this.load.image('result', 'assets/ui/result.png');
     }
     create() {
         //  When all the assets have loaded, it's often worth creating global objects here that the rest of the game can use.

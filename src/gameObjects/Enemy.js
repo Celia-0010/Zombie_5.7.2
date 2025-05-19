@@ -4,7 +4,7 @@ import ANIMATION from '../animation.js';
 export default class Enemy extends Phaser.Physics.Arcade.Sprite
 {
     moveSpeed = 400; // time in milliseconds to move from one tile to another
-    chaseSpeed = 1
+    chaseSpeed = 0.7
     frameDuration = 0;
     accumulator = 0;
     direction = { x: 0, y: 0 };
