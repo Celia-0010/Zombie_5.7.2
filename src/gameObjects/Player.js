@@ -79,8 +79,8 @@ export default class Player extends Phaser.Physics.Arcade.Sprite
         // 只要累计距离≥一个格子，就扣一次属性、并减掉 tileSize
         const tileSize = this.mapOffset.tileSize;
         while (this.distanceAccumulator >= tileSize) {
-          this.adjustStat('hunger', -0.2);
-          this.adjustStat('fuel',   -0.2);
+          this.adjustStat('hunger', -0.4);
+          this.adjustStat('fuel',   -0.6);
           this.distanceAccumulator -= tileSize;
         }
       }
@@ -108,8 +108,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite
 
   // 切换为房车模式
   enterVehicleMode() {
+      this.scene.sound.stopByKey('street');
+      this.scene.sound.play('bgm', { loop: true });
       this.scene.sound.play('engineon');
-      this.scene.sound.play('bgm');
       this.inVehicle = true;
       this.setTexture(ASSETS.spritesheet.vehicle.key); // 房车贴图 frame
       const snappedX = Math.round((this.x - this.mapOffset.x) / this.mapOffset.tileSize) * this.mapOffset.tileSize + this.mapOffset.x;

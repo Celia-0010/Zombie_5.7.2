@@ -9,7 +9,7 @@ export default {
             args: ['assets/sound/engineOn.mp3']
         },
         shutter:{
-            key: 'engineon',
+            key: 'shutter',
             args: ['assets/sound/shutter.wav']
         },
         attack:{
@@ -24,10 +24,18 @@ export default {
             key: 'street',
             args: ['assets/sound/street.wav']
         },
-        shutter: {
-            key: 'shutter',
-            args: ['assets/sound/shutter.wav']
+        levelup: {
+            key: 'levelup',
+            args: ['assets/sound/levelup.wav']
         },
+        gameover: {
+            key: 'gameover',
+            args: ['assets/sound/gameover.wav']
+        },
+        room: {
+            key: 'room',
+            args: ['assets/sound/room.wav']
+        }
     },
     // 'image': {
     //     spikes: {
@@ -350,21 +358,21 @@ export default {
         },
         gangster: {
             key: 'gangster_avatar',
-            args: ['assets/ui/NPCHead/technician.png',{
+            args: ['assets/ui/NPCHead/gangster.png',{
                 frameWidth: 32,
                 frameHeight: 32
             }]
         },
         chef: {
             key: 'chef_avatar',
-            args: ['assets/ui/NPCHead/technician.png',{
+            args: ['assets/ui/NPCHead/chef.png',{
                 frameWidth: 32,
                 frameHeight: 32
             }]
         },
         merchant: {
             key: 'merchant_avatar',
-            args: ['assets/ui/NPCHead/technician.png',{
+            args: ['assets/ui/NPCHead/merchant.png',{
                 frameWidth: 32,
                 frameHeight: 32
             }]

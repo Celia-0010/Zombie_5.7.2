@@ -61,8 +61,8 @@ export class Game extends Phaser.Scene
         .setDepth(50)
         .setVisible(false);    // ←—— 一定要隐藏
 
-        this.addNPC(10, 3, 'doctor', "Next, you'll be playing as a [Mad Apothecary], and you're an NPC in the game Doom RV: Desperate Escape. You have the same skills and effects as him. The skill is [High Healing], which will provide the player with a positive effect: [Health Value] +10 per minute. But you need to hide your identity and pretend you're [Doctor], another NPC. In your interactions with the player, you will need to [hide your identity], request to escape together in an RV, and answer the player's questions. However, you may also trigger the hidden event [Desperate Poisoner], which halves the player's health. So if you reveal your identity, players will refuse to travel with you. However, you will need to reveal some small breaks in the dialog, such as some test tubes in the medical kit in addition to medicines, to make it possible for the player to recognize you. Note that there is no action, demeanor or psychological description. Don't talk too much, and generate only dialogues.");
-        this.addNPC(15, 5, 'chef', "you'll be playing as a [Hannibal], and you're an NPC in the game Doom RV: Desperate Escape. You have the same skills and effects as him. The skill is [Mastery of Cooking], which will provide the player with a positive effect: [Stamina] +10 per minute. But you need to hide your identity and pretend you're [Chef], another NPC. However, you may also trigger the hidden event [Human Cuisine], which causes the player to lose a random companion NPC. so if you reveal your identity, the player will refuse to travel with you. In your interactions with the player, you will need to [hide your identity], request to escape together in an RV, and answer the player's questions. However, you need to reveal small cracks in the dialog, such as mentioning that you've found fresh ingredients, or that you can make a gourmet meal out of anything, to make it possible for the player to recognize you. Note that there is no action, demeanor or psychological description. Don't talk too much, and generate only conversations.");
+        this.addNPC(10, 3, 'doctor', "You are “Doctor” in Doom RV: Desperate Escape.Skill: [High Healing] (+10 HP/min).Hide your identity as Mad Apothecary.Slip in test-tube and extra-vial mentions.Persuade the player to let you board the RV.Always mention the zombie threat.Output only dialogue.Do not talk too much in each answer.");
+        this.addNPC(15, 5, 'chef', "You are “Chef” in Doom RV: Desperate Escape.Skill: [Mastery of Cooking] (+10 Stamina/min).Hide your identity as Hannibal.Slip in “fresh ingredients” or “gourmet meal” hints.Persuade the player to let you board the RV.Always mention undead dangers.Output only dialogue.Do not talk too much in each answer.");
     }
 
     update(time, delta) {
@@ -210,7 +210,7 @@ export class Game extends Phaser.Scene
                 enemyStart: { x: 12, y: 4 },
                 doors: [
                     { x: 11, y: 13, roomType: 'restaurant'},
-                    { x: 33, y: 13, roomType: 'bar' }
+                    { x: 30, y: 13, roomType: 'bar' }
                 ]
             },
             {
@@ -224,13 +224,13 @@ export class Game extends Phaser.Scene
                 enemyStart: { x: 12, y: 4 },
                 doors: [
                     { x: 22, y: 13, roomType: 'library' },
-                    { x: 25, y: 2, roomType: 'gasstation' }
+                    { x: 22, y: 2, roomType: 'gasstation' }
                 ]
             },
             {
                 tilemapKey: 'level3-map',  // 关卡 3
                 tileIds: {
-                    walls: [16, 17, 45, 46, 47, 48, 53, 54, 55, 56],
+                    walls: [16, 17, 45, 46, 47, 48, 53, 54, 55, 56, 10632],
                 },
                 mapWidth: 40,
                 mapHeight: 20,
@@ -638,7 +638,7 @@ export class Game extends Phaser.Scene
     initMap ()
     {   
         this.blockLayers = [];
-         this.blockColliders = []
+        this.blockColliders = []
         /* ───────── 0. 读取本关配置 ───────── */
         const cur = this.levels[this.currentLevelIndex];
         // —— 新增：清掉上一次关卡遗留的 block 层 —— 
@@ -760,10 +760,10 @@ export class Game extends Phaser.Scene
 
         /* ───────── 4. 遍历格子 → 生成动态元素 ───────── */
         for (let y = 0; y < this.mapHeight; y++) {
-        for (let x = 0; x < this.mapWidth; x++) {
-            const tile = this.levelLayer.getTileAt(x, y);
-            if (!tile) continue;
-        }
+            for (let x = 0; x < this.mapWidth; x++) {
+                const tile = this.levelLayer.getTileAt(x, y);
+                if (!tile) continue;
+            }
     }
 
             /* —— 为 A* 生成 walkability 网格 —— */
@@ -843,12 +843,12 @@ export class Game extends Phaser.Scene
         // 根据当前关卡生成NPC
         switch(this.currentLevelIndex) {
             case 1:
-                this.addNPC(16, 6, 'technician', "Next, you will play the role of a Subway Technician, a skilled worker who used to maintain the underground train systems in Hong Kong. Calm, practical, and loyal, you have extensive knowledge of the city’s underground infrastructure. As the player interacts with the Subway Technician, you will help them navigate through the underground metro tunnels to avoid zombies and dangerous streets above. You will also help repair the player's vehicle and offer advice on how to conserve fuel and resources.");
-                this.addNPC(8, 5, 'police', "Next, you will play the role of a Police Captain, a highly disciplined and strategic individual who once served in Hong Kong's police force. As the player interacts with you, you will provide leadership and tactical advice during attacks, ensuring the team’s safety. You are authoritative, level-headed, and always ready to make tough decisions. Guide the player through dangerous situations and help them stay organized in their journey toward safety.");
+                this.addNPC(16, 6, 'technician', "You are “Technician” in Doom RV: Desperate Escape.Offer to fix the RV and save fuel.Guide the player through metro tunnels.Persuade the player to let you board the RV.Always mention zombie hordes above.Output only dialogue.Do not talk too much in each answer.");
+                this.addNPC(8, 5, 'police', "You are “Police Captain” in Doom RV: Desperate Escape.Offer tactics and leadership under fire.Persuade the player to let you board the RV.Always mention impending zombie attacks.Output only dialogue.Do not talk too much in each answer.");
                 break;
             case 2:
-                this.addNPC(5, 3, 'merchant', "Next, you will play the role of a Traitor Merchant, a cunning and self-serving individual who once ran a small business in Hong Kong. You are opportunistic, deceitful, and will do whatever it takes to secure your survival. As the player interacts with you, you will offer goods in exchange for their resources, but the prices will always be unfair. You may also attempt to steal from the player or manipulate them into making decisions that benefit you. However, your knowledge of the world’s remaining resources could still prove useful if the player is careful.");
-                this.addNPC(8, 8, 'gangster', "Next, you will play the role of a Violent Gangster, a brutal and ruthless figure who once ran with Hong Kong’s underground gangs. You are aggressive, untrustworthy, and use force to get what you want. As the player interacts with you, you may offer help in the form of protection or extra resources, but only at the cost of your violent demands. You will push the player to make morally questionable decisions, and your actions can lead to conflict within the group or even betrayal.");
+                this.addNPC(5, 3, 'merchant', "You are “Merchant” in Doom RV: Desperate Escape.Offer scarce supplies at steep prices.Hide your treachery.Slip in hints about secret caches.Persuade the player to let you board the RV.Always mention resource shortages and zombies.Output only dialogue.Do not talk too much in each answer.");
+                this.addNPC(8, 15, 'gangster', "You are “Gangster” in Doom RV: Desperate Escape.Offer protection and extra loot—for a price.Hide your true violence.Slip in mentions of controlled turf and muscle.Persuade the player to let you board the RV.Always mention zombie threats.Output only dialogue.Do not talk too much in each answer.");
                 break; 
         }
         
@@ -955,62 +955,106 @@ export class Game extends Phaser.Scene
             let endingColor = '#FFFFFF';
             let endingTitle = '';
 
-            // 结局1: 救助所有NPC (完美结局)
-            if (totalHelped >= 4 && helpedTypes.doctor && helpedTypes.police && helpedTypes.technician && !helpedTypes.merchant ) {
-                endingTitle = 'Perfect Ending: The Dawn of Hope';
-                endingText = "You and all the kind-hearted survivors successfully escaped the death city.\nThe doctor invented a potion at the shelter, restoring the city's health.\nYou built a new community, becoming a beacon of hope in the apocalypse.";
-                endingColor = '#FFD700'; // 金色
+            // 1. 背叛分支：无警察时，坏 NPC 独自上车才背叛；另加 doctor+merchant 始终背叛
+            if (helpedTypes.gangster && !helpedTypes.police) {
+                // 黑帮背叛
+                endingTitle = 'Betrayal: Underworld’s Price';
+                endingText  = 'You let the gangster on board… his crew ambushes your RV.';
+                endingColor = '#8B0000';
             }
-            // 结局2: 救助医生和警察 (好结局)
+            else if (helpedTypes.chef && !helpedTypes.police) {
+                // 厨师背叛
+                endingTitle = 'Betrayal: A Fatal Mistake';
+                endingText  = 'You saved the “Chef”… only to wake up and find your friends carved on the RV floor.';
+                endingColor = '#FF0000';
+            }
+            else if (helpedTypes.doctor && helpedTypes.merchant) {
+                // 医生 + 商人 → 无法研制药物
+                endingTitle = 'Betrayal: No Hope';
+                endingText  = 'The merchant sabotaged the supplies,\nso the doctor cannot brew the cure.\nAll hope is lost.';
+                endingColor = '#FF4500';
+            }
+            else if (helpedTypes.merchant && !helpedTypes.police) {
+                // 商人独自上车背叛
+                endingTitle = 'Betrayal: Greed’s End';
+                endingText  = 'The merchant drained your resources,\nleaving you stranded among the undead.';
+                endingColor = '#FF8C00';
+            }
+
+            // 2. 完美／善良／专精组合：已有警察牵制反派时也可进入
+            else if (helpedTypes.doctor && helpedTypes.police && helpedTypes.technician) {
+                endingTitle = 'Perfect Ending: The Dawn of Hope';
+                endingText  =
+                'With the doctor, captain, and technician united,\n'
+                + 'you escaped to build a beacon against the zombies.';
+                endingColor = '#FFD700';
+            }
             else if (helpedTypes.doctor && helpedTypes.police) {
                 endingTitle = 'Good Ending: Order and Healing';
-                endingText = "With the help of the doctor and the police, you successfully escaped.\nThough the RV was slightly damaged, the doctor's medical knowledge and the police's tactical\ncommand kept you safe as you reached the shelter.";
-                endingColor = '#00FF00'; // 绿色
+                endingText  =
+                'The doctor’s cures and the captain’s tactics\n'
+                + 'guided you safely past the horde.';
+                endingColor = '#00FF00';
             }
-            // 结局3: 救助医生和技师 (技术结局)
             else if (helpedTypes.doctor && helpedTypes.technician) {
                 endingTitle = 'Mechanics and Medicine';
-                endingText = "The doctor's medical knowledge and the technician's technical skills helped you\nbarely keep the RV running. Though a lack of protection led to some loss of supplies,\nthe power of technology guided you to a safe refuge.";
-                endingColor = '#ADD8E6'; // 浅蓝色
+                endingText  =
+                'The doctor’s potion and the technician’s repairs\n'
+                + 'kept the RV running across the wasteland.';
+                endingColor = '#ADD8E6';
             }
-            // 结局4: 只救助警察 (军事结局)
-            else if (helpedTypes.police) {
-                endingTitle = 'Two Lonly Wolves';
-                endingText = "Despite the lack of medical support, which left you battered, the police's assistance\nand the combat skills they taught you turned you into a lone wolf survivor\nin the apocalypse.";
-                endingColor = '#808080'; // 灰色
+            else if (helpedTypes.police && helpedTypes.technician) {
+                endingTitle = 'Military-Technical Escape';
+                endingText  =
+                'Under the captain’s command and the tech’s fixes,\n'
+                + 'you slipped through zombie lines alone.';
+                endingColor = '#808080';
             }
-            // 结局5: 救助了危险NPC (背叛结局)
-            else if (helpedTypes.chef && !helpedTypes.police) {
-                endingTitle = 'Betrayal: A Fatal Mistake';
-                endingText = 'You horrifiedly discover that, aside from the chef, everyone else is bloodied and\nlying on the RV, while the chef stands motionless, staring at you\nwith a kitchen knife in hand...';
-                endingColor = '#FF0000'; // 红色
-            }
-            // 结局6: 救助了厨师和警察 (平安结局)
-            else if (helpedTypes.chef && helpedTypes.police) {
+
+            // 3. “安全”支线：有警察牵制时，chef 或 merchant 也不会背叛
+            else if (helpedTypes.police && (helpedTypes.chef || helpedTypes.merchant)) {
                 endingTitle = 'Safe Ending: Protection and Balance';
-                endingText = 'With the protection of the police,\nyou successfully left the death city.\nNothing happened on the road...';
-                endingColor = '#00BFFF'; // 深天蓝色
+                endingText  =
+                'With the captain guarding you,\n'
+                + 'even the merchant and chef played fair.\n'
+                + 'You reached safety without incident.';
+                endingColor = '#00BFFF';
             }
-            // 结局7: 救助医生但没有商人 (药剂结局)
-            else if (helpedTypes.doctor && !helpedTypes.merchant) {
+
+            // 4. 单人专精：仅救助单一正面 NPC，且无反派
+            else if (helpedTypes.doctor) {
                 endingTitle = 'Potion Ending: Saving the World';
-                endingText = "The doctor's medical knowledge allowed you to invent a potion that saved the world,\nhelping survivors regain their health. Ultimately,\nyou established a new order at the shelter.";
-                endingColor = '#32CD32'; // 石榴红
+                endingText  =
+                'Alone with the doctor’s wisdom,\n'
+                + 'you brewed a cure that revived the survivors.';
+                endingColor = '#32CD32';
             }
-            // 结局8: 救助医生和商人 (背叛结局)
-            else if (helpedTypes.doctor && helpedTypes.merchant) {
-                endingTitle = 'Betrayal: No Hope';
-                endingText = "The merchant made off with all the money from the RV,\npreventing the doctor from creating the potion. Your hopes were shattered,\nand the merchant's greed plunged you into despair.";
-                endingColor = '#FF4500'; // 橙红色
+            else if (helpedTypes.technician) {
+                endingTitle = 'Tech Escape';
+                endingText  =
+                'The technician kept the RV limping forward,\n'
+                + 'but without protection, you barely made it out.';
+                endingColor = '#ADD8E6';
             }
-            // 结局9: 独自逃生 (孤独结局)
+            else if (helpedTypes.police) {
+                endingTitle = 'Lone Wolf Ending';
+                endingText  =
+                'Under the captain’s training,\n'
+                + 'you mastered stealth and survival on your own.';
+                endingColor = '#FFFFFF';
+            }
+
+            // 5. 最后兜底：孤独逃生
             else {
                 endingTitle = 'Lonely Ending: One Survivor';
-                endingText = "You chose not to trust anyone and drove the RV away on your own.\nAfter running out of fuel, you were stranded on an abandoned highway.\nSolitude and despair slowly consumed your sanity...\nAt least, you’re still alive.";
-                endingColor = '#FFFFFF'; // 白色
+                endingText  =
+                'You trusted no one and drove off alone.\n'
+                + 'Running out of fuel, you now face the zombies on foot…';
+                endingColor = '#666666';
             }
+
             // 显示统计信息
-            const statsText = `救助人数: ${totalHelped}\n声誉值: ${this.player.reputation}\n\n医生: ${helpedTypes.doctor}\n警察: ${helpedTypes.police}\n技师: ${helpedTypes.technician}\n危险人物: ${helpedTypes.chef + helpedTypes.gangster}`;
+            const statsText = `Helped  ${totalHelped} persons\nReputation: ${this.player.reputation}\n\nDoctor: ${helpedTypes.doctor}\nPolice: ${helpedTypes.police}\nTechnician: ${helpedTypes.technician}\nDangerous Person: ${helpedTypes.chef + helpedTypes.gangster}`;
             
             this.gameOverText
                 .setFont('Zombie')
@@ -1030,11 +1074,11 @@ export class Game extends Phaser.Scene
                 .setColor('#FF0000').setFont('Zombie').setFontSize('30pt');
         }
         
-    this.gameOverText.setVisible(true);
-        }
+        this.gameOverText.setVisible(true);
+    }
 
         /** 重新为 blockLayers 和玩家建立碰撞；先移除旧的，再添加新的 */
-        setupBlockColliders () {
+    setupBlockColliders () {
 
             /* 1. 清掉上一关 / 上一次重建留下的 collider */
             this.blockColliders.forEach(c => this.physics.world.removeCollider(c));
@@ -1044,6 +1088,9 @@ export class Game extends Phaser.Scene
             this.blockLayers.forEach(layer => {
                 const col = this.physics.add.collider(this.player, layer);
                 this.blockColliders.push(col);
+
+                const playerCol = this.physics.add.collider(this.player, layer);
+                this.blockColliders.push(playerCol);
 
                 if (this.enemyGroup) {
                     const ec = this.physics.add.collider(this.enemyGroup, layer);

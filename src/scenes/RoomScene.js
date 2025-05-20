@@ -16,7 +16,7 @@ export class RoomScene extends Phaser.Scene {
         this.roomType = data.roomType || 'default'; // 接收房间类型
     }
     create() {
-                // 根据房间类型设置不同配置
+    // 根据房间类型设置不同配置
         switch(this.roomType) {
             case 'restaurant':
                 this.initRestaurant();
@@ -49,11 +49,19 @@ export class RoomScene extends Phaser.Scene {
         this.spawnZombies();
         this.spawnSupplies();
 
-            // 播放背景音乐（如果有）
-        if(this.backgroundMusic) {
-            this.sound.play(this.backgroundMusic, { loop: true });
-        }
+        // 播放背景音乐（如果有）
+        this.sound.stopByKey('street');
+        this.sound.stopByKey('bgm');
+        this.sound.play('room', { loop: true });
 
+        /* 调试：显示碰撞层
+        this.blockLayers.forEach(layer => {
+            layer.renderDebug(this.add.graphics(), {
+                tileColor: new Phaser.Display.Color(0, 0, 255, 50),      // 非碰撞瓦片：半透明蓝
+                collidingTileColor: new Phaser.Display.Color(255, 0, 0, 180) // 碰撞瓦片：半透明红
+            });
+        });
+        */
 
         this.refreshHearts();
 
@@ -82,8 +90,8 @@ export class RoomScene extends Phaser.Scene {
         this.halfTileSize = this.tileSize * 0.5;
 
         // 假设室内地图的尺寸，根据实际情况调整
-        this.mapHeight = 10;
-        this.mapWidth = 20;
+        this.mapHeight = 20;
+        this.mapWidth = 40;
 
         this.mapX = this.centreX - (this.mapWidth * this.tileSize * 0.5);
         this.mapY = this.centreY - (this.mapHeight * this.tileSize * 0.5);
@@ -108,8 +116,10 @@ export class RoomScene extends Phaser.Scene {
 
         // 按 ESC 退出房间
         this.input.keyboard.on('keydown-ESC', () => {
+            this.sound.stopByKey('room');
             this.scene.stop('RoomScene');
             const game = this.scene.get('Game');
+            game.enemyGroup.clear(true, true);
             
             game.closePopup();
 
@@ -140,9 +150,9 @@ export class RoomScene extends Phaser.Scene {
         
         // 初始化墙体碰撞层
         if (this.map.layers.some(l => l.name === 'Wall')) {
-            const wallLayer = this.map.createLayer('Wall', tileset, this.mapX, this.mapY);
-            wallLayer.setCollisionByExclusion([-1, 0]); // 排除空白瓦片
-            this.blockLayers.push(wallLayer);
+            this.wallLayer = this.map.createLayer('Wall', tileset, this.mapX, this.mapY);
+            this.wallLayer.setCollisionByExclusion([-1, 0]);
+            this.blockLayers.push(this.wallLayer);
         }
 
         // 初始化边缘碰撞层
@@ -152,7 +162,7 @@ export class RoomScene extends Phaser.Scene {
             this.blockLayers.push(borderLayer);
         }
 
-        /* ---- 6. 用墙层遍历，替代原 levelLayer ---- */
+        /* ---- 6. 用墙层遍历，替代原 levelLayer ---- 
         for (let y = 0; y < this.mapHeight; y++) {
             for (let x = 0; x < this.mapWidth; x++) {
                 const tile = this.wallLayer?.getTileAt(x, y);
@@ -165,6 +175,9 @@ export class RoomScene extends Phaser.Scene {
                 }
             }
         }
+        */
+
+        console.log(`Map Offset: X=${this.mapX}, Y=${this.mapY}, Size=${this.mapWidth}x${this.mapHeight}`);
     }
 
     setupBlockColliders() {
@@ -197,9 +210,10 @@ export class RoomScene extends Phaser.Scene {
     initRestaurant() {
         this.mapKey = ASSETS.tilemapTiledJSON.restaurant.key; // 餐厅地图
         this.supplyTypes = [
-            { name: "The restaurant's refrigerator suddenly loses power, causing food to spoil.\nHealth - 10", stat: "health", delta: -10 },
-            { name: " A hot meal is available.\nVitality + 20", stat: "hunger", delta: 20 },
-            { name: " You find a spare gas canister.\nfuel + 10", stat: "fuel", delta: 10 }
+            { name: "The restaurant's refrigerator suddenly loses power, causing food to spoil.", stat: "health", delta: -5 },
+            { name: " A hot meal is available.", stat: "hunger", delta: 20 },
+            { name: " You find a spare gas canister.", stat: "fuel", delta: 15 },
+            { name: "You find a delicious sandwich!", stat: "hunger", delta: 15}
         ];
         // this.backgroundMusic = 'restaurant-bgm';
         this.playerStart = { x: 15, y: 16 }; // 初始位置
@@ -208,8 +222,10 @@ export class RoomScene extends Phaser.Scene {
     initLibrary() {
         this.mapKey = ASSETS.tilemapTiledJSON.library.key; // 医院地图
         this.supplyTypes = [
-            { name: "You find a first-aid manual on a shelf.\nHealth + 10", stat: "health", delta: 10 },
-            { name: "You spent some time but found nothing...\nVitality - 5", stat: "hunger", delta: -5 }
+            { name: "You find a first-aid manual on a shelf.", stat: "health", delta: 10 },
+            { name: "You spent some time but found nothing...", stat: "hunger", delta: -5 },
+            { name: "You find a back up battery on a shelf.", stat:"fuel", delta: 10},
+            { name: "You find half pack of cookies...They are moist but not going bad.", stat:"hunger", delta: 10}
         ];
         // this.backgroundMusic = 'hospital-bgm';
         this.playerStart = { x: 12, y: 8 }; // 初始位置
@@ -218,9 +234,9 @@ export class RoomScene extends Phaser.Scene {
     initGasstation() {
         this.mapKey = ASSETS.tilemapTiledJSON.gasstation.key;
         this.supplyTypes = [
-            { name: "Found fuel can.\nFuel + 10", stat: "fuel", delta: 10 },
-            { name: "The fuel pump malfunctions, spilling gasoline.\nHealth - 10", stat: "health", delta: -10 },
-            { name: "The convenience store offers ready-to-eat meals.\nVitality + 10", stat: "hunger", delta: 10 }
+            { name: "You find a fuel can.", stat: "fuel", delta: 15 },
+            { name: "The fuel pump malfunctions, spilling gasoline.", stat: "health", delta: -10 },
+            { name: "The convenience store offers ready-to-eat meals.", stat: "hunger", delta: 10 }
 
         ];
         // this.backgroundMusic = 'gasstation-bgm';
@@ -230,12 +246,13 @@ export class RoomScene extends Phaser.Scene {
     initBar() {
         this.mapKey = ASSETS.tilemapTiledJSON.bar.key;
         this.supplyTypes = [
-            { name: "Ouch! The liquor cabinet falls over, spilling glass bottles.\nHealth - 10", stat: "health", delta: -10 },
-            { name: "Snacks are available.\nVitality + 5", stat: "hunger", delta: 5 },
-            { name: "You find fuel for the bar's backup generator.\nFuel + 5", stat: "fuel", delta: 5 },
+            { name: "Ouch! The liquor cabinet falls over, spilling glass bottles.", stat: "health", delta: -5 },
+            { name: "Snacks are available.\nVitality + 5", stat: "hunger", delta: 10 },
+            { name: "You find fuel for the bar's backup generator.\nFuel + 5", stat: "fuel", delta: 10 },
+            { name: "You find some soft drink.", stat: "hunger", delta: 5}
         ];
         // this.backgroundMusic = 'gasstation-bgm';
-        this.playerStart = { x: 20, y: 4 }; // 初始位置
+        this.playerStart = { x: 20, y: 7 }; // 初始位置
     }
 
     initHospital() {
@@ -326,7 +343,7 @@ export class RoomScene extends Phaser.Scene {
         const stats = [ 'health', 'hunger', 'fuel' ];
         this.heartGroups = {};
 
-                        // 新增退出提示 (英文版)
+        // 新增退出提示 (英文版)
         this.exitText = this.add.text(W/2-270, H/2-150, 'Press ESC to exit the room', {
             font: '16px Minecraft',
             fill: '#ffffff',

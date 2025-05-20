@@ -193,6 +193,16 @@ export default class Enemy extends Phaser.Physics.Arcade.Sprite
         const targetX = this.scene.mapX + next.x * this.scene.tileSize + this.scene.halfTileSize;
         const targetY = this.scene.mapY + next.y * this.scene.tileSize + this.scene.halfTileSize;
 
+        const dx = targetX - this.x;
+        const dy = targetY - this.y;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            if (dx > 0) this.anims.play(ANIMATION.enemy.right.key, true);
+            else        this.anims.play(ANIMATION.enemy.left.key,  true);
+            } else {
+            if (dy > 0) this.anims.play(ANIMATION.enemy.down.key,  true);
+            else        this.anims.play(ANIMATION.enemy.up.key,    true);
+        }
+
         const step = this.chaseSpeed;
         this.x = this.MoveTowards(this.x, targetX, step);
         this.y = this.MoveTowards(this.y, targetY, step);

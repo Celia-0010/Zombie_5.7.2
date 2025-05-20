@@ -226,7 +226,7 @@ export default class NPC extends Phaser.Physics.Arcade.Sprite {
                 this.pathIndex = 0;
             } else {
                 this.path.length = 0;
-                console.warn("找不到路径或路径无效");
+                // console.warn("找不到路径或路径无效");
             }
         });
         this.scene.pathfinder.calculate();

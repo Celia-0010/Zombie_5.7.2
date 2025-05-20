@@ -235,7 +235,7 @@ createButtons() {
     // 处理“帮助”按钮的点击
     handleHelp() {
         // 播放帮助音效
-        // this.scene.sound.play('help-sound');
+        this.scene.sound.play('levelup');
         
         // 1. 记录玩家帮助了该NPC
         this.recordNPCHelp();
@@ -388,7 +388,7 @@ createButtons() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: "Qwen/Qwen3-14B",
+                model: "Qwen/Qwen3-30B-A3B",
                 stream: false,
                 max_tokens: 200,
                 enable_thinking: false,
